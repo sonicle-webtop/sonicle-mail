@@ -22,6 +22,7 @@ package com.sonicle.mail.tnef.internet;
 
 import com.sonicle.mail.tnef.*;
 import java.io.InputStream;
+import java.io.IOException;
 import java.util.Vector;
 
 import javax.mail.*;

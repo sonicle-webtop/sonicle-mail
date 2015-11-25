@@ -182,7 +182,7 @@ public class JTnef {
         System.out.println("(c)1999-2000 Mirror Worlds Technologies Inc.");
         System.out.println("http://www.mirrorworlds.com");
         System.out.println();
-        System.out.println("usage: com.sonicle.mail.tnef.JTnef [xv] winmail.dat [outputdir]");   
+        System.out.println("usage: com.mirrorworlds.lifestreams.mail.tnef.JTnef [xv] winmail.dat [outputdir]");   
         System.out.println("     v generates verbose output to the stdout.");   
         System.out.println("     x extracts the attachments to the current directory.");
         System.out.println("     outputdir specifies a extract destination directory.");   

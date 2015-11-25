@@ -36,6 +36,7 @@ package com.sonicle.mail.sieve;
 
 import java.io.*;
 import java.net.*;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 
 public class SieveConnection {
@@ -53,14 +54,14 @@ public class SieveConnection {
     getResponse();
   }
 
-  public String[] send(String s) throws IOException {
+  public SieveResponse send(String s) throws IOException {
     if (debug) System.out.println("<< "+s);
     writer.println(s);
     writer.flush();
     return getResponse();
   }
 
-  private String[] getResponse() throws IOException {
+  private SieveResponse getResponse() throws IOException {
     String line=null;
     boolean b=false;
     ArrayList<String> lines=new ArrayList<String>();
@@ -71,15 +72,15 @@ public class SieveConnection {
         break;
       }
       else if (line.startsWith("NO")) {
+		StringBuffer sb=new StringBuffer();
+		while(reader.ready()) lines.add(reader.readLine());
         b=false;
         break;
       }
       lines.add(line);
     }
-    if (b) {
-      return lines.toArray(new String[lines.size()]);
-    }
-    return null;
+	SieveResponse sr=new SieveResponse(b,lines.toArray(new String[lines.size()]));
+    return sr;
   }
 
   public void close() throws IOException {

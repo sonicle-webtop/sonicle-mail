@@ -20,7 +20,7 @@
 package com.sonicle.mail.tnef.internet;
 
 
-import com.sonicle.mail.*;
+import com.sonicle.mail.tnef.*;
 import javax.mail.*;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.ContentType;

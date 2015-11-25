@@ -3,23 +3,25 @@
  * and open the template in the editor.
  */
 
-package com.sonicle.mail.imap;
+package com.sonicle.mail.imap.test;
 
+import com.sonicle.mail.imap.SonicleIMAPFolder;
 import java.util.Properties;
 import java.util.Vector;
 import javax.mail.Session;
 import javax.mail.Store;
+import javax.swing.JOptionPane;
 
 /**
  *
  * @author gbulfon
  */
-public class Test {
+public class RecursiveSearch {
 
     public static void main(String args[]) throws Exception {
-        String host=args[0];
-        String username=args[1];
-        String password=args[2];
+		String host=JOptionPane.showInputDialog("Host");
+		String user=JOptionPane.showInputDialog("User");
+		String password=JOptionPane.showInputDialog("Password");
         Properties props=System.getProperties();
         props.setProperty("mail.imaps.ssl.trust", "*");
         props.setProperty("mail.imap.folder.class","com.sonicle.mail.imap.SonicleIMAPFolder");
@@ -27,7 +29,7 @@ public class Test {
         Session session=Session.getDefaultInstance(props, null);
         session.setDebug(false);
         Store store=session.getStore("imap");
-        store.connect(host,username,password);
+        store.connect(host,user,password);
         SonicleIMAPFolder folder=(SonicleIMAPFolder)store.getFolder("");
         String skipfolders[]=new String[] {
             "Drafts","Sent","Trash","Spam"

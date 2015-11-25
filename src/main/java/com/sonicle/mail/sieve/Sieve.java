@@ -90,7 +90,8 @@ public class Sieve {
     SieveConnection sc=new SieveConnection(hostname,port);
     SieveScript ss[]=null;
     if (authenticate(sc)) {
-      String resp[]=sc.send("LISTSCRIPTS");
+      SieveResponse sr=sc.send("LISTSCRIPTS");
+	  String resp[]=sr.lines;
       ss=new SieveScript[resp.length];
       for(int i=0;i<resp.length;++i) {
         String name=null;
@@ -107,34 +108,39 @@ public class Sieve {
     return ss;
   }
 
-  public boolean putScript(String name, StringBuffer script, boolean activate) throws java.net.UnknownHostException, IOException {
+  public boolean putScript(String name, StringBuffer script, boolean activate) throws SieveException, java.net.UnknownHostException, IOException {
     //SieveConnection.debug=true;
     SieveConnection sc=new SieveConnection(hostname,port);
     SieveScript ss[]=null;
     boolean retval=false;
     if (authenticate(sc)) {
       String command="PUTSCRIPT \""+name+"\" {"+(script.length())+"+}\r\n"+script;
-      String resp[] = sc.send(command);
-      retval=(resp!=null);
+      SieveResponse sr = sc.send(command);
+      retval=sr.status;
       if (retval && activate) {
-        resp=sc.send("SETACTIVE \""+name+"\"");
-        retval=(resp!=null);
+        sr=sc.send("SETACTIVE \""+name+"\"");
+        retval=sr.status;
+		logout(sc);
       }
-      logout(sc);
+	  else {
+		  String msg=sr.getMessage();
+		  sr=logout(sc);
+		  throw new SieveException(msg);
+	  }
     }
     return retval;
   }
 
   private boolean authenticate(SieveConnection sc) throws IOException {
-    String[] resp= sc.send("AUTHENTICATE \"PLAIN\" \""+encoder.encode((((char)0)+username+((char)0)+password).getBytes())+"\"");
-    return resp!=null;
+    SieveResponse resp= sc.send("AUTHENTICATE \"PLAIN\" \""+encoder.encode((((char)0)+username+((char)0)+password).getBytes())+"\"");
+    return resp.status;
   }
 
-  private void logout(SieveConnection sc) throws IOException {
-    sc.send("LOGOUT");
+  private SieveResponse logout(SieveConnection sc) throws IOException {
+    return sc.send("LOGOUT");
   }
 
-  public void saveScript(MailFilters filters, boolean activate) throws Exception {
+  public void saveScript(MailFilters filters, boolean activate) throws SieveException,java.net.UnknownHostException, IOException {
     SieveScriptGenerator ssg=new SieveScriptGenerator();
     StringBuffer sievescript=ssg.generate(filters);
 

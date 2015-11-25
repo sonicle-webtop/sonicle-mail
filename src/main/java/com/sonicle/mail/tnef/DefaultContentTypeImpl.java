@@ -36,7 +36,7 @@ import java.io.IOException;
  * class are not synchronized i.e. not thread safe. <P>
  * To save the 72 preconfigured entries to a file from the command line:
  * <pre>
- *  java com.sonicle.mail.tnef.DefaultContentTypeImpl mimetypes.txt 
+ *  java com.mirrorworlds.lifestreams.mail.tnef.DefaultContentTypeImpl mimetypes.txt 
  * </pre>
  * @author Priyantha Jayanetti
  * @author Mirror Worlds Technologies

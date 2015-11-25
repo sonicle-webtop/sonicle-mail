@@ -42,7 +42,7 @@ public class SortSequence {
         }
         sortArg.writeAtom("("+sortSB.toString()+")");
         Argument searchArg=null;
-        if (term!=null) searchArg=SearchSequence.generateSequence(term, charset);
+        if (term!=null) searchArg=(new SearchSequence()).generateSequence(term, charset);
         else { searchArg=new Argument(); searchArg.writeAtom("ALL"); }
 
         Argument args=new Argument();
