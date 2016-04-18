@@ -45,6 +45,7 @@ public class Sieve {
   String password=null;
   String hostname=null;
   int port=2000;
+  String spamFolder=null;
   BASE64Encoder encoder=new BASE64Encoder();
 
   public Sieve(String hostname, String username, String password) {
@@ -85,6 +86,10 @@ public class Sieve {
   public void setPort(int port) {
     this.port=port;
   }
+  
+  public void setSpamFolder(String spamFolder) {
+	  this.spamFolder=spamFolder;
+  }
 
   public SieveScript[] getScripts() throws java.net.UnknownHostException, IOException {
     SieveConnection sc=new SieveConnection(hostname,port);
@@ -103,8 +108,9 @@ public class Sieve {
         } else name=resp[i].trim();
         ss[i]=new SieveScript(name,active);
       }
+	  logout(sc);
     }
-    logout(sc);
+    close(sc);
     return ss;
   }
 
@@ -125,26 +131,50 @@ public class Sieve {
 	  else {
 		  String msg=sr.getMessage();
 		  sr=logout(sc);
+		  close(sc);
 		  throw new SieveException(msg);
 	  }
     }
+	close(sc);
     return retval;
   }
 
   private boolean authenticate(SieveConnection sc) throws IOException {
-    SieveResponse resp= sc.send("AUTHENTICATE \"PLAIN\" \""+encoder.encode((((char)0)+username+((char)0)+password).getBytes())+"\"");
-    return resp.status;
+	String authcmd="AUTHENTICATE \"PLAIN\" \""+encoder.encode((((char)0)+username+((char)0)+password).getBytes())+"\"";
+	SieveResponse resp= sc.send(authcmd);
+	return resp.status;
   }
 
   private SieveResponse logout(SieveConnection sc) throws IOException {
     return sc.send("LOGOUT");
   }
+  
+  private void close(SieveConnection sc) {
+	  try { sc.close(); } catch(Exception exc) {}
+  }
 
   public void saveScript(MailFilters filters, boolean activate) throws SieveException,java.net.UnknownHostException, IOException {
     SieveScriptGenerator ssg=new SieveScriptGenerator();
-    StringBuffer sievescript=ssg.generate(filters);
+	StringBuffer sievescript=ssg.generate(filters,spamFolder);
 
     putScript("webtop",sievescript,activate);
+  }
+  
+  public String getScript(String name) throws SieveException, java.net.UnknownHostException, IOException  {
+	  StringBuffer sb=new StringBuffer();
+	  SieveConnection sc=new SieveConnection(hostname,port);
+	  if (authenticate(sc)) {
+		  SieveResponse resp=sc.send("GETSCRIPT \""+name+"\"");
+		  if (resp.status) {
+			  for(String line: resp.lines) {
+				  sb.append(line);
+				  sb.append('\n');
+			  }
+		  }
+		  logout(sc);
+	  }
+	  close(sc);
+	  return sb.toString();
   }
 
 }

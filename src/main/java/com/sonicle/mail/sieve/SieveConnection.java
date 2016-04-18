@@ -68,11 +68,11 @@ public class SieveConnection {
     while((line=reader.readLine())!=null) {
       if (debug) System.out.println(">> "+line);
       if (line.startsWith("OK") || line.trim().length()==0) {
+		while(reader.ready()) lines.add(reader.readLine());
         b=true;
         break;
       }
       else if (line.startsWith("NO")) {
-		StringBuffer sb=new StringBuffer();
 		while(reader.ready()) lines.add(reader.readLine());
         b=false;
         break;
