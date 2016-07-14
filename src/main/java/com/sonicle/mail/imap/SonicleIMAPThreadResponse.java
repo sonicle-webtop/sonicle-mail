@@ -7,6 +7,7 @@ package com.sonicle.mail.imap;
 
 import com.sun.mail.imap.protocol.IMAPResponse;
 import com.sun.mail.util.ASCIIUtility;
+import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -14,99 +15,135 @@ import com.sun.mail.util.ASCIIUtility;
  * @author gabriele.bulfon
  */
 public class SonicleIMAPThreadResponse extends IMAPResponse {
+    
+    public static final char ITEM_SEPARATOR='^';
+    public static final char LEVEL_SEPARATOR=':';
+    public static final char ELEMENT_SEPARATOR=',';
+    
+    private static final byte[] ANY_PARENTHESIS_CHARBYTES={ '(', ')' };
+    private static final byte[] OPEN_PARENTHESIS_CHARBYTES={ '(' };
+    private static final byte[] CLOSED_PARENTHESIS_CHARBYTES={ ')' };
+    
+    private int nmessages=0;
 	
 	public SonicleIMAPThreadResponse(IMAPResponse r) {
 		super(r);
 	}
-	
-	public ThreadList readThreadList() {
-		ThreadList tl=readThreadList(0,index,buffer.length);
-		if (tl!=null) index=tl.getEndIndex()+1;
-		return tl;
-	}
-	
-	private ThreadList readThreadList(int level, int rstart, int rend) {
-		ThreadList tl=null;
-		
-		int index=rstart;
-		
-		index=skipSpaces(index,rend);
-		
-		if (index>=rend) {// not what we expected
-			return null;
-		}
-		if (level==0) {
-			if (buffer[index] != '(') // not what we expected
-				return null;
-				
-			++index;
-			if (buffer[index]=='(') {
-				//get first list
-				ThreadList subtl=readThreadList(level+1,index+1,rend);
-				if (subtl==null) return null;
-				index=skipSpaces(subtl.getEndIndex(),rend)+1;
-				while(index<rend && buffer[index]!=')') {
-					ThreadList bsubtl=readThreadList(level+1,index+1,rend);
-					if (bsubtl==null) return null;
-					subtl.addBrotherList(bsubtl);
-					index=skipSpaces(bsubtl.getEndIndex(),rend)+1;
-				}
-				return subtl;
-			}
-		}
-			
-		//not level 0
-		
-		int indent=1;
-		int end=rend;
-		int start=index;
-		while(index<end && indent>0) {
-			byte b=buffer[index++];
-			switch(b) {
-				case '(':
-					++indent;
-					break;
-					
-				case ')':
-					--indent;
-					break;
-			}
-		}
-		end=index-1;
-		
-		//something was wrong
-		if (indent>0 || start==end) return null;
-		
-		int ix=start;
-		tl=new ThreadList(start,end);
-		while(ix<end) {
-			boolean isBrother=false;
-			boolean isChild=false;
-			char c;
-			while(ix<end && !Character.isDigit(c=(char)buffer[ix])) {
-				++ix;
-				switch(c) {
-					case '(': isBrother=true; isChild=false; break;
-					case ' ': isChild=true; isBrother=false; break;
-				}
-			}
-			int ix2=ix;
-			while(ix2<end && Character.isDigit((char)buffer[ix2])) ++ix2;
-			if (ix2>ix) {
-				int n=ASCIIUtility.parseInt(buffer, ix, ix2);
-				tl.insertId(n);
-				ix=ix2;
-			}
-		}
-		
-		return tl;
-	}
-	
-    public int skipSpaces(int start, int end) {
-		int index=start;
-		while (index < end && buffer[index] == ' ')
-			index++;
-		return index;
+	  
+    public String parse() {
+        nmessages=0;
+        String parsed="";
+        int begin=indexOf(OPEN_PARENTHESIS_CHARBYTES);
+        if (begin>0) {
+            StringBuffer sb=parse(begin,0,0);
+            parsed=sb.toString();
+        }
+        return parsed;
     }
-	
+    
+    private StringBuffer parse(int begin, int end, int depth) {
+        
+        StringBuffer node=new StringBuffer();
+        if (end==0) end=buffer.length;
+        
+        // Let's try to store data in max. compacted stracture as a string,
+        // arrays handling is much more expensive
+        // For the following structure: THREAD (2)(3 6 (4 23)(44 7 96))
+        // -- 2
+        // -- 3
+        //     \-- 6
+        //         |-- 4
+        //         |    \-- 23
+        //         |
+        //         \-- 44
+        //               \-- 7
+        //                    \-- 96
+        //
+        // The output will be: 2,3^1:6^2:4^3:23^2:44^3:7^4:96
+        
+        if (buffer[begin]!='(') {
+            
+            // find next bracket
+            int stop=indexOf(ANY_PARENTHESIS_CHARBYTES,begin, end);
+            String messages[]=StringUtils.split(new String(buffer,begin,stop-begin).trim()," ");
+            if (messages==null || messages.length==0) {
+                return node;
+            }
+            
+            for(String msg: messages) {
+                if (msg!=null && msg.length()>0) {
+                    if (depth>0) node.append(ITEM_SEPARATOR).append(depth).append(LEVEL_SEPARATOR);
+                    node.append(msg);
+                    ++nmessages;
+                    ++depth;
+                }
+            }
+            
+            if (stop<end) {
+                node.append(parse(stop,end,depth));
+            }
+            
+        } else {
+            int off = begin;
+            while(off<end) {
+                int start=off;
+                off++;
+                int n=1;
+                while(n>0) {
+                    int p = indexOf(CLOSED_PARENTHESIS_CHARBYTES, off);
+                    if (p<0) {
+                        // error, wrong structure, mismatched brackets in IMAP THREAD response
+                        // TODO: write error to the log?
+                        return node;
+                    }
+                    int p1 = indexOf(OPEN_PARENTHESIS_CHARBYTES, off);
+                    if (p1 >=0 && p1 < p) {
+                        off = p1 + 1;
+                        n++;
+                    }
+                    else {
+                        off = p + 1;
+                        n--;
+                    }
+                }
+                
+                StringBuffer thread = parse(start + 1, off - 1, depth);
+                if (thread!=null && thread.length()>0) {
+                    if (depth==0) {
+                        if (node!=null && node.length()>0) {
+                            node.append(ELEMENT_SEPARATOR);
+                        }
+                    }
+                    node.append(thread);
+                }                
+                
+            }
+        }
+        
+        return node;
+    }
+    
+    public int getMessageCount() {
+        return nmessages;
+    }
+    
+    private int indexOf(byte charbytes[]) {
+        return indexOf(charbytes,0,buffer.length);
+    }
+    
+    private int indexOf(byte charbytes[], int begin) {
+        return indexOf(charbytes,begin,buffer.length);
+    }
+    
+    private int indexOf(byte charbytes[], int begin, int end) {
+        int i=begin;
+        for(;i<end;++i) {
+            byte b=buffer[i];
+            for(byte cb: charbytes)
+                if (b==cb) return i;
+        }
+        return i;
+    }
+
+    
 }
