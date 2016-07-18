@@ -30,7 +30,14 @@ public class Thread {
 		SonicleIMAPFolder folder=(SonicleIMAPFolder)store.getFolder("INBOX");
 		folder.open(Folder.READ_ONLY);
 		javax.mail.search.FromStringTerm fst=new javax.mail.search.FromStringTerm("fullone");
-		SonicleIMAPMessage sims[]=folder.thread("REFERENCES",fst);
+		FetchProfile FP = new FetchProfile();
+		FP.add(FetchProfile.Item.ENVELOPE);
+		FP.add(FetchProfile.Item.FLAGS);
+		FP.add(FetchProfile.Item.CONTENT_INFO);
+		FP.add(UIDFolder.FetchProfileItem.UID);
+		FP.add("Message-ID");
+		FP.add("X-Priority");
+		SonicleIMAPMessage sims[]=folder.thread("REFERENCES",fst,FP);
 		
 		for(SonicleIMAPMessage sim: sims) {
 			String line="";

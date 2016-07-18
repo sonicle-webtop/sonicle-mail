@@ -7,6 +7,10 @@ package com.sonicle.mail.imap;
 
 import com.sun.mail.imap.protocol.IMAPResponse;
 import com.sun.mail.util.ASCIIUtility;
+import java.util.ArrayList;
+import javax.mail.FetchProfile;
+import javax.mail.Message;
+import javax.mail.MessagingException;
 import org.apache.commons.lang3.StringUtils;
 
 
@@ -26,11 +30,16 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
     
     private int nmessages=0;
 	
-	public SonicleIMAPThreadResponse(IMAPResponse r) {
+	SonicleIMAPFolder folder;
+	FetchProfile fetchProfile;
+	
+	public SonicleIMAPThreadResponse(IMAPResponse r, SonicleIMAPFolder folder, FetchProfile fetchProfile) {
 		super(r);
+		this.folder=folder;
+		this.fetchProfile=fetchProfile;
 	}
 	  
-    public String parse() {
+    public String parse() throws MessagingException {
         nmessages=0;
         String parsed="";
         int begin=indexOf(OPEN_PARENTHESIS_CHARBYTES);
@@ -40,11 +49,12 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
         }
         return parsed;
     }
-    
-    private StringBuffer parse(int begin, int end, int depth) {
+	
+    private StringBuffer parse(int begin, int end, int depth) throws MessagingException {
         
         StringBuffer node=new StringBuffer();
         if (end==0) end=buffer.length;
+		ArrayList<String> smsgs=new ArrayList<String>();
         
         // Let's try to store data in max. compacted stracture as a string,
         // arrays handling is much more expensive
@@ -74,6 +84,7 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
                 if (msg!=null && msg.length()>0) {
                     if (depth>0) node.append(ITEM_SEPARATOR).append(depth).append(LEVEL_SEPARATOR);
                     node.append(msg);
+					smsgs.add(msg);
                     ++nmessages;
                     ++depth;
                 }
@@ -119,6 +130,11 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
                 
             }
         }
+		int imsgs[]=new int[smsgs.size()];
+		for(int i=0;i<imsgs.length;++i) imsgs[i]=Integer.parseInt(smsgs.get(i));
+		Message msgs[]=new Message[imsgs.length];
+		msgs=folder.getMessages(imsgs);
+		folder.fetch(msgs, fetchProfile);
         
         return node;
     }

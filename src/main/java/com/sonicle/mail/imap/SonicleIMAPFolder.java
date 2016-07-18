@@ -12,12 +12,10 @@ import com.sun.mail.iap.*;
 import com.sun.mail.imap.*;
 import com.sun.mail.imap.protocol.*;
 import java.io.IOException;
-import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Map;
 import java.util.Vector;
 import javax.mail.*;
 import javax.mail.internet.MimeUtility;
@@ -87,15 +85,15 @@ public class SonicleIMAPFolder extends IMAPFolder {
 	 */
 
 	
-    public synchronized SonicleIMAPMessage[] thread(String method)
+    public synchronized SonicleIMAPMessage[] thread(String method,FetchProfile fetchProfile)
 				throws MessagingException {
-		return thread(method,null);
+		return thread(method,null,fetchProfile);
 	}
 	
     /**
      * Thread and Search whole folder for messages matching the given terms.
      */
-    public synchronized SonicleIMAPMessage[] thread(String method, SearchTerm term)
+    public synchronized SonicleIMAPMessage[] thread(String method, SearchTerm term, FetchProfile fetchProfile)
 				throws MessagingException {
 		checkOpened();
 		
@@ -103,7 +101,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 			SonicleIMAPMessage[] matches = null;
 
 			synchronized(messageCacheLock) {
-				matches = _thread(method,term);
+				matches = _thread(method,term,fetchProfile);
 			}
 			return matches;
 
@@ -120,9 +118,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
      * @param	int	thread method
      * @return	array of matching sequence numbers.
      */
-    private SonicleIMAPMessage[] _thread(String method)
+    private SonicleIMAPMessage[] _thread(String method,FetchProfile fetchProfile)
 			throws MessagingException, SearchException {
-		return _thread(method, null);
+		return _thread(method, null, fetchProfile);
     }
 
     /**
@@ -134,12 +132,12 @@ public class SonicleIMAPFolder extends IMAPFolder {
      * @param	term	SearchTerm
      * @return	array of matching sequence numbers.
      */
-    private SonicleIMAPMessage[] _thread(String method, SearchTerm term)
+    private SonicleIMAPMessage[] _thread(String method, SearchTerm term, FetchProfile fetchProfile)
 			throws MessagingException, SearchException {
 		// Check if the search "text" terms is null or contains only ASCII chars
 		if (term==null || SearchSequence.isAscii(term)) {
 			try {
-				return _issueThread(method, term, null);
+				return _issueThread(method, term, null, fetchProfile);
 			} catch (IOException ioex) { /* will not happen */ }
 		}
 
@@ -156,7 +154,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 			continue;
 
 			try {
-				return _issueThread(method, term, searchCharsets[i]);
+				return _issueThread(method, term, searchCharsets[i], fetchProfile);
 			} catch (IOException ioex) {
 				/* Charset conversion failed. Try the next one */
 				continue;
@@ -174,7 +172,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
      * Returns array of matching sequence numbers. Note that an empty
      * array is returned for no matches.
      */
-    private SonicleIMAPMessage[] _issueThread(String method, SearchTerm term, String charset)
+    private SonicleIMAPMessage[] _issueThread(String method, SearchTerm term, String charset, FetchProfile fetchProfile)
 	     throws MessagingException, SearchException, IOException {
 
         Response[] r=(Response[])doCommand(new GetThread(method,term,charset));
@@ -191,10 +189,13 @@ public class SonicleIMAPFolder extends IMAPFolder {
 				IMAPResponse ir = (IMAPResponse)r[i];
 				// There *will* be one THREAD response.
 				if (ir.keyEquals("THREAD")) {
-					SonicleIMAPThreadResponse sitr=new SonicleIMAPThreadResponse(ir);
+					SonicleIMAPThreadResponse sitr=new SonicleIMAPThreadResponse(ir,this,fetchProfile);
                     String parsed=sitr.parse();
+					String sorted=sort_threads(parsed);
+//					System.out.println("PARSED = "+parsed);
+//					System.out.println("SORTED = "+sorted);
                     matches=new SonicleIMAPMessage[sitr.getMessageCount()];
-                    String items[]=StringUtils.split(parsed, SonicleIMAPThreadResponse.ITEM_SEPARATOR);
+                    String items[]=StringUtils.split(sorted, SonicleIMAPThreadResponse.ITEM_SEPARATOR);
                     int n=0;
                     for(String item: items) {
                         int level=0;
@@ -220,6 +221,72 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 		return matches;
     }
+	
+	class ThreadList implements Comparable {
+		ArrayList<String> items=new ArrayList<String>();
+		long mostRecentDate=0;
+		
+		void addItem(String item) {
+			items.add(item);
+		}
+		
+		String implode() {
+			StringBuffer sb=new StringBuffer();
+			
+			for(String item:items) {
+				if (sb.length()>0) sb.append(SonicleIMAPThreadResponse.ITEM_SEPARATOR);
+				sb.append(item);
+			}
+			return sb.toString();
+		}
+
+		@Override
+		public int compareTo(Object o) {
+			return (int)(mostRecentDate-((ThreadList)o).mostRecentDate);
+		}
+	}
+	
+	private String sort_threads(String parsed) throws MessagingException {
+		String elems[]=StringUtils.split(parsed,SonicleIMAPThreadResponse.ELEMENT_SEPARATOR);
+		ArrayList<ThreadList> threads=new ArrayList<ThreadList>();
+		ThreadList currentThreadList=null;
+		for (String elem: elems) {
+			String items[]=StringUtils.split(elem,SonicleIMAPThreadResponse.ITEM_SEPARATOR);
+			for(String item: items) {
+				int lsep=item.indexOf(SonicleIMAPThreadResponse.LEVEL_SEPARATOR);
+				if (lsep>0) {
+					currentThreadList.addItem(item);
+					item=item.substring(lsep+1);
+					SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
+					long msgdate=msg.getReceivedDate().getTime();
+					if (msgdate>currentThreadList.mostRecentDate)
+						currentThreadList.mostRecentDate=msgdate;
+				} else {
+					currentThreadList=new ThreadList();
+					currentThreadList.addItem(item);
+					SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
+					currentThreadList.mostRecentDate=msg.getReceivedDate().getTime();
+					threads.add(currentThreadList);
+				}
+			}			
+		}
+		
+		Collections.sort(threads, new Comparator<ThreadList>() {
+			@Override
+			public int compare(ThreadList tl1, ThreadList tl2) {
+				long delta=tl2.mostRecentDate - tl1.mostRecentDate;
+				return (delta<0?-1:delta>0?1:0);
+			}
+		});
+		
+		StringBuffer sb=new StringBuffer();
+		for(ThreadList thread: threads) {
+			if (sb.length()>0) sb.append(SonicleIMAPThreadResponse.ITEM_SEPARATOR);
+			sb.append(thread.implode());
+		}
+		
+		return sb.toString();
+	}
 
 	
 	/************************************************************************/
