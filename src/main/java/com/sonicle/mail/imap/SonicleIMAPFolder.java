@@ -191,26 +191,26 @@ public class SonicleIMAPFolder extends IMAPFolder {
 				if (ir.keyEquals("THREAD")) {
 					SonicleIMAPThreadResponse sitr=new SonicleIMAPThreadResponse(ir,this,fetchProfile);
                     String parsed=sitr.parse();
-					String sorted=sort_threads(parsed);
-//					System.out.println("PARSED = "+parsed);
-//					System.out.println("SORTED = "+sorted);
+					String sorted=(method.equals("REFS")?parsed:sort_threads(parsed));
+					//System.out.println(method+"="+sorted);
                     matches=new SonicleIMAPMessage[sitr.getMessageCount()];
-                    String items[]=StringUtils.split(sorted, SonicleIMAPThreadResponse.ITEM_SEPARATOR);
-                    int n=0;
-                    for(String item: items) {
-                        int level=0;
-                        int ix=item.indexOf(SonicleIMAPThreadResponse.LEVEL_SEPARATOR);
-                        if (ix>0) {
-                            level=Integer.parseInt(item.substring(0,ix));
-                            item=item.substring(ix+1);
-                        }
-                        String elements[]=StringUtils.split(item,SonicleIMAPThreadResponse.ELEMENT_SEPARATOR);
-                        for(String element: elements) {
-                            SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(element));
-                            msg.setThreadIndent(level);
-                            matches[n++]=msg;
-                        }
-                    }
+					String elements[]=StringUtils.split(sorted,SonicleIMAPThreadResponse.ELEMENT_SEPARATOR);
+					int n=0;
+					for(int e=elements.length-1;e>=0;--e) {
+						String element=elements[e];
+						String items[]=StringUtils.split(element, SonicleIMAPThreadResponse.ITEM_SEPARATOR);
+						for(String item: items) {
+							int level=0;
+							int ix=item.indexOf(SonicleIMAPThreadResponse.LEVEL_SEPARATOR);
+							if (ix>0) {
+								level=Integer.parseInt(item.substring(0,ix));
+								item=item.substring(ix+1);
+							}
+							SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
+							msg.setThreadIndent(level);
+							matches[n++]=msg;
+						}
+					}
 					r[i] = null;
 				}
 			}
@@ -242,7 +242,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 		@Override
 		public int compareTo(Object o) {
-			return (int)(mostRecentDate-((ThreadList)o).mostRecentDate);
+			return (int)(((ThreadList)o).mostRecentDate-mostRecentDate);
 		}
 	}
 	
@@ -258,14 +258,16 @@ public class SonicleIMAPFolder extends IMAPFolder {
 					currentThreadList.addItem(item);
 					item=item.substring(lsep+1);
 					SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
-					long msgdate=msg.getReceivedDate().getTime();
+					long msgdate=msg.getSentDate().getTime();
+					//System.out.println("msg "+item+" date="+msg.getSentDate());
 					if (msgdate>currentThreadList.mostRecentDate)
 						currentThreadList.mostRecentDate=msgdate;
 				} else {
 					currentThreadList=new ThreadList();
 					currentThreadList.addItem(item);
 					SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
-					currentThreadList.mostRecentDate=msg.getReceivedDate().getTime();
+					currentThreadList.mostRecentDate=msg.getSentDate().getTime();
+					//System.out.println("msg"+item+" date="+msg.getSentDate());
 					threads.add(currentThreadList);
 				}
 			}			
@@ -274,6 +276,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 		Collections.sort(threads, new Comparator<ThreadList>() {
 			@Override
 			public int compare(ThreadList tl1, ThreadList tl2) {
+				//System.out.println("comparing "+tl2.mostRecentDate+" - "+tl1.mostRecentDate);
 				long delta=tl2.mostRecentDate - tl1.mostRecentDate;
 				return (delta<0?-1:delta>0?1:0);
 			}
@@ -285,7 +288,8 @@ public class SonicleIMAPFolder extends IMAPFolder {
 			sb.append(thread.implode());
 		}
 		
-		return sb.toString();
+		String str=sb.toString();
+		return str;
 	}
 
 	
