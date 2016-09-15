@@ -26,6 +26,7 @@ public class SonicleIMAPMessage extends IMAPMessage {
 	private boolean threadOldest=false;
 	
 	private int threadIndent=0;
+	private int threadChildren=0;
 	
 	public SonicleIMAPMessage(SonicleIMAPFolder folder, int msgnum) {
 		super(folder,msgnum);
@@ -46,6 +47,18 @@ public class SonicleIMAPMessage extends IMAPMessage {
 	
 	public int getThreadIndent() {
 		return threadIndent;
+	}
+	
+	public void setThreadChildren(int n) {
+		threadChildren=n;
+	}
+	
+	public void incrementThreadChildren() {
+		threadChildren++;
+	}
+	
+	public int getThreadChildren() {
+		return threadChildren;
 	}
 	
 	public boolean hasThreads() {

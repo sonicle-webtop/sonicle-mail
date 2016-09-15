@@ -27,6 +27,8 @@ import org.apache.commons.lang3.StringUtils;
  * @author gbulfon
  */
 public class SonicleIMAPFolder extends IMAPFolder {
+	
+	private int threadRoots=0;
 
     private static String[] searchCharsets; 	// array of search charsets
 
@@ -196,6 +198,8 @@ public class SonicleIMAPFolder extends IMAPFolder {
                     matches=new SonicleIMAPMessage[sitr.getMessageCount()];
 					String elements[]=StringUtils.split(sorted,SonicleIMAPThreadResponse.ELEMENT_SEPARATOR);
 					int n=0;
+					int rootix=0;
+					threadRoots=0;
 					for(int e=elements.length-1;e>=0;--e) {
 						String element=elements[e];
 						String items[]=StringUtils.split(element, SonicleIMAPThreadResponse.ITEM_SEPARATOR);
@@ -208,6 +212,13 @@ public class SonicleIMAPFolder extends IMAPFolder {
 							}
 							SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
 							msg.setThreadIndent(level);
+							if (level==0) {
+								++threadRoots;
+								rootix=n;
+								msg.setThreadChildren(0);
+							} else {
+								matches[rootix].incrementThreadChildren();
+							}
 							matches[n++]=msg;
 						}
 					}
@@ -221,6 +232,10 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 		return matches;
     }
+	
+	public int getThreadRoots() {
+		return threadRoots;
+	}
 	
 	class ThreadList implements Comparable {
 		ArrayList<String> items=new ArrayList<String>();
