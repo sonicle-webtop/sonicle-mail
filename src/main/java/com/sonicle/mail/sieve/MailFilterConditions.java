@@ -17,13 +17,13 @@ public class MailFilterConditions extends ArrayList<MailFilterCondition> {
 	public static final String OPERATOR_OR="or";
 	public static final String OPERATOR_AND="and";
 	
-	int idfilter;
+	long idfilter;
 	boolean enabled;
 	String action;
 	String actionvalue;
 	String operator;
 
-	public MailFilterConditions(int idfilter, boolean enabled, String action, String actionvalue, String operator) {
+	public MailFilterConditions(long idfilter, boolean enabled, String action, String actionvalue, String operator) {
         this.idfilter=idfilter;
 		this.enabled=enabled;
 		this.action=action;
@@ -31,7 +31,7 @@ public class MailFilterConditions extends ArrayList<MailFilterCondition> {
 		this.operator=operator;
 	}
 	
-	public int getIDFilter() {
+	public long getIDFilter() {
 		return idfilter;
 	}
 	
