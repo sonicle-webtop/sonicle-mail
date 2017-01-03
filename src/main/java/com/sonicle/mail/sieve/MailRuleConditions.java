@@ -17,22 +17,22 @@ public class MailRuleConditions extends ArrayList<MailRuleCondition> {
 	public static final String OPERATOR_OR="or";
 	public static final String OPERATOR_AND="and";
 	
-	long idfilter;
+	long rule_id;
 	boolean enabled;
 	String action;
 	String actionvalue;
 	String operator;
 
-	public MailRuleConditions(long idfilter, boolean enabled, String action, String actionvalue, String operator) {
-        this.idfilter=idfilter;
+	public MailRuleConditions(long rule_id, boolean enabled, String action, String actionvalue, String operator) {
+        this.rule_id=rule_id;
 		this.enabled=enabled;
 		this.action=action;
 		this.actionvalue=actionvalue;
 		this.operator=operator;
 	}
 	
-	public long getIDFilter() {
-		return idfilter;
+	public long getRuleId() {
+		return rule_id;
 	}
 	
 	public boolean isEnabled() {
