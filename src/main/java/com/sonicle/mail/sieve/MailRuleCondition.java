@@ -36,7 +36,7 @@ package com.sonicle.mail.sieve;
 
 import java.util.*;
 
-public class MailFilterCondition {
+public class MailRuleCondition {
   public static final int ANY=1;
   public static final int ALL=2;
 
@@ -57,7 +57,7 @@ public class MailFilterCondition {
   ArrayList<String> values=new ArrayList<String>();
   int comparison=CONTAINS;
 
-  public MailFilterCondition() {
+  public MailRuleCondition() {
   }
 
   public int getCondition() {

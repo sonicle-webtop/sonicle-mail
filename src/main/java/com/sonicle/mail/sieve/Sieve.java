@@ -153,7 +153,7 @@ public class Sieve {
 	  try { sc.close(); } catch(Exception exc) {}
   }
 
-  public void saveScript(MailFilters filters, boolean activate) throws SieveException,java.net.UnknownHostException, IOException {
+  public void saveScript(MailRules filters, boolean activate) throws SieveException,java.net.UnknownHostException, IOException {
     SieveScriptGenerator ssg=new SieveScriptGenerator();
 	StringBuffer sievescript=ssg.generate(filters,spamFolder);
 

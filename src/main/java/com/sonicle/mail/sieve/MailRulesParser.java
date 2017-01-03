@@ -34,14 +34,27 @@
 
 package com.sonicle.mail.sieve;
 
+
 /**
  *
  * @author gbulfon
  */
-public interface MailFiltersParserListener {
+public class MailRulesParser {
 
-    public void filtersStart();
-    public void filter(int row, MailFilterConditions mfcs);
-    public void vacation(boolean active, String message, String addresses);
-    public void filtersEnd(int rows);
+
+    public static void parse(MailRules rules, MailRulesParserListener mrpl) {
+        mrpl.rulesStart();
+
+        int records=0;
+		for(MailRuleConditions mfcs: rules) {
+			mrpl.rule(records, mfcs);
+			++records;
+		}
+
+        mrpl.rulesEnd(records);
+		
+		mrpl.vacation(rules.isVacationEnabled(), rules.getVacationMessage(), rules.getVacationAddresses());
+        
+    }
+
 }

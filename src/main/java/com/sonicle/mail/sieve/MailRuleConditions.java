@@ -12,7 +12,7 @@ import java.util.ArrayList;
  *
  * @author gbulfon
  */
-public class MailFilterConditions extends ArrayList<MailFilterCondition> {
+public class MailRuleConditions extends ArrayList<MailRuleCondition> {
 	
 	public static final String OPERATOR_OR="or";
 	public static final String OPERATOR_AND="and";
@@ -23,7 +23,7 @@ public class MailFilterConditions extends ArrayList<MailFilterCondition> {
 	String actionvalue;
 	String operator;
 
-	public MailFilterConditions(long idfilter, boolean enabled, String action, String actionvalue, String operator) {
+	public MailRuleConditions(long idfilter, boolean enabled, String action, String actionvalue, String operator) {
         this.idfilter=idfilter;
 		this.enabled=enabled;
 		this.action=action;

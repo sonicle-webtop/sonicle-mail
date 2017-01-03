@@ -12,7 +12,7 @@ import java.util.ArrayList;
  *
  * @author gbulfon
  */
-public class MailFilters extends ArrayList<MailFilterConditions> {
+public class MailRules extends ArrayList<MailRuleConditions> {
 	
 	private String vacationMessage=null;
 	private String vacationAddresses=null;
