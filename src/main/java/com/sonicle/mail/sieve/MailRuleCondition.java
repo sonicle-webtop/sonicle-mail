@@ -55,6 +55,7 @@ public class MailRuleCondition {
   int condition=ANY;
   String field=null;
   ArrayList<String> values=new ArrayList<String>();
+  String stringValues="";
   int comparison=CONTAINS;
 
   public MailRuleCondition() {
@@ -84,11 +85,8 @@ public class MailRuleCondition {
     return values;
   }
 
-  public void addValue(String value) {
-    values.add(value);
-  }
-
   public void setValues(String v, boolean spaces) {
+	stringValues=v;
     String regex="[\\s,\\,\\;]";
     if (!spaces) regex="\\z";
     if (v.indexOf('"')>=0) regex="\"";
@@ -101,6 +99,10 @@ public class MailRuleCondition {
         if (ttoken.length()>0) values.add(ttoken);
       }
     }
+  }
+  
+  public String getStringValues() {
+	  return stringValues;
   }
 
   public int getComparison() {
