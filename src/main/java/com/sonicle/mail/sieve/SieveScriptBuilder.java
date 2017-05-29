@@ -147,7 +147,7 @@ public class SieveScriptBuilder {
 		if (!StringUtils.isBlank(vacation.getAddresses())) {
 			sb.append(":addresses");
 			sb.append(" ");
-			sb.append(printArrayValue(StringUtils.split(vacation.getAddresses(), ",")));
+			sb.append(printQuotedArray(extractAddresses(vacation.getAddresses())));
 			sb.append(" ");
 		}
 		
@@ -165,6 +165,14 @@ public class SieveScriptBuilder {
 		sb.append(";\n");
 		
 		return sb.toString();
+	}
+	
+	private String[] extractAddresses(String addresses) {
+		String[] addrs = StringUtils.split(vacation.getAddresses(), ",");
+		for(int i=0; i<addrs.length; i++) {
+			addrs[i] = StringUtils.trim(addrs[i]);
+		}
+		return addrs;
 	}
 	
 	private String printTextValue(Object obj) {
@@ -461,14 +469,22 @@ public class SieveScriptBuilder {
 			return asValueArgument("\\Flagged");
 			
 		} else if (EnumUtils.equals(flag, SieveActionArgFlag.JUNK) || EnumUtils.equals(flag, SieveActionArgFlag.NOT_JUNK)) {
-			return printArrayValue(asValueArgument("$Junk"), asValueArgument("Junk"), asValueArgument("JunkRecorded"));
+			return printArray(asValueArgument("$Junk"), asValueArgument("Junk"), asValueArgument("JunkRecorded"));
 			
 		} else {
 			throw new RuntimeException();
 		}
 	}
 	
-	private String printArrayValue(String... elements) {
+	private String printQuotedArray(String... elements) {
+		String[] arr = new String[elements.length];
+		for(int i=0; i<elements.length; i++) {
+			arr[i] = printQuotedValue(elements[i]);
+		}
+		return printArray(arr);
+	}
+	
+	private String printArray(String... elements) {
 		return "[" + StringUtils.join(elements, ",") + "]";
 	}
 	
