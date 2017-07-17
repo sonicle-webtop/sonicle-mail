@@ -34,8 +34,10 @@
 package com.sonicle.mail.sieve;
 
 import com.sonicle.commons.EnumUtils;
+import com.sonicle.commons.RegexUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -257,7 +259,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append("[\"subject\",\"Subject\",\"SUBJECT\"]")
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else if (EnumUtils.equals(field, SieveRuleField.FROM)) {
@@ -269,7 +271,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append("[\"from\",\"From\",\"FROM\"]")
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else if (EnumUtils.equals(field, SieveRuleField.TO)) {
@@ -281,7 +283,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append("[\"to\",\"To\",\"TO\"]")
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else if (EnumUtils.equals(field, SieveRuleField.CC)) {
@@ -293,7 +295,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append("[\"cc\",\"Cc\",\"CC\"]")
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else if (EnumUtils.equals(field, SieveRuleField.TO_OR_CC)) {
@@ -305,7 +307,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append("[\"to\",\"To\",\"TO\",\"cc\",\"Cc\",\"CC\"]")
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else if (EnumUtils.equals(field, SieveRuleField.BODY)) {
@@ -318,7 +320,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append(conditionOperator(operator))
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else if (EnumUtils.equals(field, SieveRuleField.SIZE)) {
@@ -339,7 +341,7 @@ public class SieveScriptBuilder {
 				.append(" ")
 				.append(asConditionArgument(rule.getArgument()))
 				.append(" ")
-				.append(asConditionValue(rule.getValue()))
+				.append(asConditionValue(operator, rule.getValue()))
 				.toString();
 			
 		} else {
@@ -351,8 +353,19 @@ public class SieveScriptBuilder {
 		return printQuotedValue(value);
 	}
 	
-	private String asConditionValue(String value) {
-		return printQuotedValue(value);
+	private String asConditionValue(SieveRuleOperator operator, String value) {
+		if (EnumUtils.equals(operator, SieveRuleOperator.EQUAL_MULTI) 
+				|| EnumUtils.equals(operator, SieveRuleOperator.CONTAINS_MULTI)) {
+			String[] tokens = StringUtils.split(value, ",");	
+			for(int i=0; i<tokens.length; i++) {
+				tokens[i] = StringUtils.trim(tokens[i]);
+				tokens[i] = StringUtils.removeStart(tokens[i], "\"");
+				tokens[i] = StringUtils.removeEnd(tokens[i], "\"");
+			}
+			return printQuotedArray(tokens);
+		} else {
+			return printQuotedValue(value);
+		}
 	}
 	
 	private boolean isNotCondition(SieveRuleOperator operator) {
@@ -362,7 +375,11 @@ public class SieveScriptBuilder {
 	private String conditionOperator(SieveRuleOperator operator) {
 		if (EnumUtils.equals(operator, SieveRuleOperator.EQUAL) || EnumUtils.equals(operator, SieveRuleOperator.NOT_EQUAL)) {
 			return ":is";
+		} else if (EnumUtils.equals(operator, SieveRuleOperator.EQUAL_MULTI)) {
+			return ":is";
 		} else if (EnumUtils.equals(operator, SieveRuleOperator.CONTAINS) || EnumUtils.equals(operator, SieveRuleOperator.NOT_CONTAINS)) {
+			return ":comparator \"i;ascii-casemap\" :contains";
+		} else if (EnumUtils.equals(operator, SieveRuleOperator.CONTAINS_MULTI)) {
 			return ":comparator \"i;ascii-casemap\" :contains";
 		} else if (EnumUtils.equals(operator, SieveRuleOperator.MATCHES) || EnumUtils.equals(operator, SieveRuleOperator.NOT_MATCHES)) {
 			return ":comparator \"i;ascii-casemap\" :matches";

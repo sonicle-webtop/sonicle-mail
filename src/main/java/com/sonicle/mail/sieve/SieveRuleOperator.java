@@ -40,8 +40,10 @@ import com.google.gson.annotations.SerializedName;
  */
 public enum SieveRuleOperator {
 	@SerializedName("equal") EQUAL,
+	@SerializedName("equalmulti") EQUAL_MULTI,
 	@SerializedName("notequal") NOT_EQUAL,
 	@SerializedName("contains") CONTAINS,
+	@SerializedName("containsmulti") CONTAINS_MULTI,
 	@SerializedName("notcontains") NOT_CONTAINS,
 	@SerializedName("matches") MATCHES,
 	@SerializedName("notmatches") NOT_MATCHES,
