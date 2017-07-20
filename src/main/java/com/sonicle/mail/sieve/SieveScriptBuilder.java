@@ -146,17 +146,24 @@ public class SieveScriptBuilder {
 		sb.append(printValue(days));
 		sb.append(" ");
 		
-		if (!StringUtils.isBlank(vacation.getAddresses())) {
-			sb.append(":addresses");
-			sb.append(" ");
-			sb.append(printQuotedArray(extractAddresses(vacation.getAddresses())));
-			sb.append(" ");
-		}
-		
 		if (!StringUtils.isBlank(vacation.getSubject())) {
 			sb.append(":subject");
 			sb.append(" ");
 			sb.append(printQuotedValue(vacation.getSubject()));
+			sb.append(" ");
+		}
+		
+		if (vacation.getFrom() != null) {
+			sb.append(":from");
+			sb.append(" ");
+			sb.append(printQuotedValue(vacation.getFrom().toString()));
+			sb.append(" ");
+		}
+		
+		if (!StringUtils.isBlank(vacation.getAddresses())) {
+			sb.append(":addresses");
+			sb.append(" ");
+			sb.append(printQuotedArray(extractAddresses(vacation.getAddresses())));
 			sb.append(" ");
 		}
 		

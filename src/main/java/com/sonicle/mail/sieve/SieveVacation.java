@@ -32,6 +32,7 @@
  */
 package com.sonicle.mail.sieve;
 
+import javax.mail.internet.InternetAddress;
 import org.joda.time.DateTime;
 
 /**
@@ -39,6 +40,7 @@ import org.joda.time.DateTime;
  * @author malbinola
  */
 public class SieveVacation {
+	private InternetAddress from;
 	private String subject;
 	private String message;
 	private String addresses;
@@ -48,6 +50,14 @@ public class SieveVacation {
 	private Boolean skipMailingLists;
 	
 	public SieveVacation() {}
+	
+	public InternetAddress getFrom() {
+		return from;
+	}
+
+	public void setFrom(InternetAddress from) {
+		this.from = from;
+	}
 
 	public String getSubject() {
 		return subject;
