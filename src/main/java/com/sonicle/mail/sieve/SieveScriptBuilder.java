@@ -156,7 +156,7 @@ public class SieveScriptBuilder {
 		if (vacation.getFrom() != null) {
 			sb.append(":from");
 			sb.append(" ");
-			sb.append(printQuotedValue(vacation.getFrom().toString()));
+			sb.append(printQuotedValue(vacation.getFrom().getAddress()));
 			sb.append(" ");
 		}
 		
