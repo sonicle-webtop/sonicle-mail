@@ -34,10 +34,9 @@
 package com.sonicle.mail.sieve;
 
 import com.sonicle.commons.EnumUtils;
-import com.sonicle.commons.RegexUtils;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -80,8 +79,8 @@ public class SieveScriptBuilder {
 		if (vacation != null) {
 			sb.append(vacation(vacation));
 		}
-		for(Filter filter : filters) {
-			sb.append(rule(filter));
+		for (Filter filter : filters) {
+			if (!filter.isEmpty()) sb.append(rule(filter));
 		}
 		
 		return requires() + sb.toString();
@@ -222,7 +221,7 @@ public class SieveScriptBuilder {
 			} else if (EnumUtils.equals(rule.match, SieveMatch.ANY)) {
 				sb.append("anyof");
 			} else {
-				throw new RuntimeException();
+				throw new RuntimeException("Unsupported match type: " + EnumUtils.toSerializedName(rule.match));
 			}
 			sb.append(" ");
 			sb.append("(");
@@ -239,11 +238,11 @@ public class SieveScriptBuilder {
 		return sb.toString();
 	}
 	
-	private String filterConditions(ArrayList<SieveRule> rules) {
+	private String filterConditions(Collection<SieveRule> rules) {
 		StringBuilder sb = new StringBuilder();
 		
 		int i = 0;
-		for(SieveRule rule : rules) {
+		for (SieveRule rule : rules) {
 			i++;
 			sb.append(filterCondition(rule));
 			if (i != rules.size()) {
@@ -399,7 +398,7 @@ public class SieveScriptBuilder {
 		}
 	}
 	
-	private String ruleActions(ArrayList<SieveAction> actions) {
+	private String ruleActions(Collection<SieveAction> actions) {
 		StringBuilder sb = new StringBuilder();
 		
 		for(SieveAction action : actions) {
@@ -534,11 +533,15 @@ public class SieveScriptBuilder {
 		public ArrayList<SieveRule> rules;
 		public ArrayList<SieveAction> actions;
 		
-		public Filter(String name, SieveMatch match, ArrayList<SieveRule> rules, ArrayList<SieveAction> actions) {
+		public Filter(String name, SieveMatch match, Collection<SieveRule> rules, Collection<SieveAction> actions) {
 			this.name = name;
 			this.match = match;
-			this.rules = rules;
-			this.actions = actions;
+			this.rules = (rules != null) ? new ArrayList<>(rules) : new ArrayList<SieveRule>();
+			this.actions = (actions != null) ? new ArrayList<>(actions) : new ArrayList<SieveAction>();
+		}
+		
+		public boolean isEmpty() {
+			return rules.isEmpty() || actions.isEmpty();
 		}
 	}
 }
