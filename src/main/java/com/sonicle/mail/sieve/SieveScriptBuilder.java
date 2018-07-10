@@ -351,7 +351,7 @@ public class SieveScriptBuilder {
 				.toString();
 			
 		} else {
-			throw new RuntimeException();
+			throw new RuntimeException("This should never happen (famous last words)");
 		}
 	}
 	
@@ -394,7 +394,7 @@ public class SieveScriptBuilder {
 		} else if (EnumUtils.equals(operator, SieveRuleOperator.GREATER_THAN)) {
 			return ":over";
 		} else {
-			throw new RuntimeException();
+			throw new RuntimeException("This should never happen (famous last words)");
 		}
 	}
 	
@@ -452,22 +452,26 @@ public class SieveScriptBuilder {
 			return flagActionCommand(action.getArgument());
 			
 		} else {
-			throw new RuntimeException();
+			throw new RuntimeException("This should never happen (famous last words)");
 		}
 	}
 	
 	private String flagActionCommand(String flagArgument) {
 		SieveActionArgFlag flag = EnumUtils.forSerializedName(flagArgument, SieveActionArgFlag.class);
-		if (flag == null) throw new RuntimeException();
+		if (flag == null) throw new RuntimeException("Unsupported flag argument [" + StringUtils.defaultString(flagArgument) + "]");
 		
-		if (EnumUtils.equals(flag, SieveActionArgFlag.JUNK)) {
-			return "addflag " + asFlagValueArgument(flagArgument);
-			
-		} else if (EnumUtils.equals(flag, SieveActionArgFlag.NOT_JUNK)) {
+		if (EnumUtils.equals(flag, SieveActionArgFlag.NOT_JUNK)) {
 			return "removeflag " + asFlagValueArgument(flagArgument);
 			
+		} else if (EnumUtils.equals(flag, SieveActionArgFlag.JUNK) || 
+				EnumUtils.equals(flag, SieveActionArgFlag.SEEN) || 
+				EnumUtils.equals(flag, SieveActionArgFlag.DELETED) || 
+				EnumUtils.equals(flag, SieveActionArgFlag.ANSWERED) || 
+				EnumUtils.equals(flag, SieveActionArgFlag.FLAGGED)) {
+			return "addflag " + asFlagValueArgument(flagArgument);
+			
 		} else {
-			throw new RuntimeException();
+			throw new RuntimeException("This should never happen (famous last words)");
 		}
 	}
 	
@@ -477,7 +481,7 @@ public class SieveScriptBuilder {
 	
 	private String asFlagValueArgument(String argument) {
 		SieveActionArgFlag flag = EnumUtils.forSerializedName(argument, SieveActionArgFlag.class);
-		if (flag == null) throw new RuntimeException();
+		if (flag == null) throw new RuntimeException("Unsupported flag argument [" + StringUtils.defaultString(argument) + "]");
 		
 		if (EnumUtils.equals(flag, SieveActionArgFlag.SEEN)) {
 			return asValueArgument("\\Seen");
@@ -495,7 +499,7 @@ public class SieveScriptBuilder {
 			return printArray(asValueArgument("$Junk"), asValueArgument("Junk"), asValueArgument("JunkRecorded"));
 			
 		} else {
-			throw new RuntimeException();
+			throw new RuntimeException("This should never happen (famous last words)");
 		}
 	}
 	
