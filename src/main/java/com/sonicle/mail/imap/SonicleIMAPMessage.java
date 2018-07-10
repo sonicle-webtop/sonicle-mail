@@ -127,8 +127,7 @@ public class SonicleIMAPMessage extends IMAPMessage {
     }
 	
 	@Override
-    protected void handleExtensionFetchItems(Map extensionItems)
-				throws MessagingException {
+    protected void handleExtensionFetchItems(Map extensionItems) {
 		super.handleExtensionFetchItems(extensionItems);
 	}	
 	
