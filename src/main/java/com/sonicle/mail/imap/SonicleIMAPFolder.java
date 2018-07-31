@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Vector;
 import javax.mail.*;
 import javax.mail.internet.MimeUtility;
@@ -1018,158 +1019,161 @@ public class SonicleIMAPFolder extends IMAPFolder {
 	
 	
 	
-	/**
-	 * Prefetch attributes, based on the given FetchProfile.
-	 */
-	public synchronized void uid_fetch(Message[] msgs, FetchProfile fp)
+    /**
+	 * Taken from javamail 1.5.6
+     * Prefetch attributes, based on the given FetchProfile.
+     */
+    public synchronized void uid_fetch(Message[] msgs, FetchProfile fp)
 			throws MessagingException {
-		checkOpened();
+	// cache this information in case connection is closed and
+	// protocol is set to null
+	boolean isRev1;
+	FetchItem[] fitems;
+        synchronized (messageCacheLock) {
+	    checkOpened();
+	    isRev1 = protocol.isREV1();
+	    fitems = protocol.getFetchItems();
+	}
 
-		StringBuffer command = new StringBuffer();
-		boolean first = true;
-		boolean allHeaders = false;
+	StringBuffer command = new StringBuffer();
+	boolean first = true;
+	boolean allHeaders = false;
 
-		if (fp.contains(FetchProfile.Item.ENVELOPE)) {
-			command.append(getEnvelopeCommand());
-			first = false;
-		}
-		if (fp.contains(FetchProfile.Item.FLAGS)) {
-			command.append(first ? "FLAGS" : " FLAGS");
-			first = false;
-		}
-		if (fp.contains(FetchProfile.Item.CONTENT_INFO)) {
-			command.append(first ? "BODYSTRUCTURE" : " BODYSTRUCTURE");
-			first = false;
-		}
-		if (fp.contains(UIDFolder.FetchProfileItem.UID)) {
-			command.append(first ? "UID" : " UID");
-			first = false;
-		}
-		if (fp.contains(IMAPFolder.FetchProfileItem.HEADERS)) {
-			allHeaders = true;
-			if (protocol.isREV1()) {
-				command.append(first
-						? "BODY.PEEK[HEADER]" : " BODY.PEEK[HEADER]");
-			} else {
-				command.append(first ? "RFC822.HEADER" : " RFC822.HEADER");
-			}
-			first = false;
-		}
-		if (fp.contains(IMAPFolder.FetchProfileItem.MESSAGE)) {
-			allHeaders = true;
-			if (protocol.isREV1()) {
-				command.append(first ? "BODY.PEEK[]" : " BODY.PEEK[]");
-			} else {
-				command.append(first ? "RFC822" : " RFC822");
-			}
-			first = false;
-		}
-		if (fp.contains(FetchProfile.Item.SIZE)
-				|| fp.contains(IMAPFolder.FetchProfileItem.SIZE)) {
-			command.append(first ? "RFC822.SIZE" : " RFC822.SIZE");
-			first = false;
-		}
+	if (fp.contains(FetchProfile.Item.ENVELOPE)) {
+	    command.append(getEnvelopeCommand());
+	    first = false;
+	}
+	if (fp.contains(FetchProfile.Item.FLAGS)) {
+	    command.append(first ? "FLAGS" : " FLAGS");
+	    first = false;
+	}
+	if (fp.contains(FetchProfile.Item.CONTENT_INFO)) {
+	    command.append(first ? "BODYSTRUCTURE" : " BODYSTRUCTURE");
+	    first = false;
+	}
+	if (fp.contains(UIDFolder.FetchProfileItem.UID)) {
+	    command.append(first ? "UID" : " UID");
+	    first = false;
+	}
+	if (fp.contains(IMAPFolder.FetchProfileItem.HEADERS)) {
+	    allHeaders = true;
+	    if (isRev1)
+		command.append(first ?
+			    "BODY.PEEK[HEADER]" : " BODY.PEEK[HEADER]");
+	    else
+		command.append(first ? "RFC822.HEADER" : " RFC822.HEADER");
+	    first = false;
+	}
+	if (fp.contains(IMAPFolder.FetchProfileItem.MESSAGE)) {
+	    allHeaders = true;
+	    if (isRev1)
+		command.append(first ? "BODY.PEEK[]" : " BODY.PEEK[]");
+	    else
+		command.append(first ? "RFC822" : " RFC822");
+	    first = false;
+	}
+	if (fp.contains(FetchProfile.Item.SIZE) ||
+		fp.contains(IMAPFolder.FetchProfileItem.SIZE)) {
+	    command.append(first ? "RFC822.SIZE" : " RFC822.SIZE");
+	    first = false;
+	}
+	if (fp.contains(IMAPFolder.FetchProfileItem.INTERNALDATE)) {
+	    command.append(first ? "INTERNALDATE" : " INTERNALDATE");
+	    first = false;
+	}
 
-		// if we're not fetching all headers, fetch individual headers
-		String[] hdrs = null;
-		if (!allHeaders) {
-			hdrs = fp.getHeaderNames();
-			if (hdrs.length > 0) {
-				if (!first) {
-					command.append(" ");
-				}
-				command.append(createHeaderCommand(hdrs));
-			}
-		}
+	// if we're not fetching all headers, fetch individual headers
+	String[] hdrs = null;
+	if (!allHeaders) {
+	    hdrs = fp.getHeaderNames();
+	    if (hdrs.length > 0) {
+		if (!first)
+		    command.append(" ");
+		command.append(createHeaderCommand(hdrs, isRev1));
+	    }
+	}
 
-		/*
-		 * Add any additional extension fetch items.
-		 */
-		FetchItem[] fitems = protocol.getFetchItems();
-		for (int i = 0; i < fitems.length; i++) {
-			if (fp.contains(fitems[i].getFetchProfileItem())) {
-				if (command.length() != 0) {
-					command.append(" ");
-				}
-				command.append(fitems[i].getName());
-			}
-		}
+	/*
+	 * Add any additional extension fetch items.
+	 */
+	for (int i = 0; i < fitems.length; i++) {
+	    if (fp.contains(fitems[i].getFetchProfileItem())) {
+		if (command.length() != 0)
+		    command.append(" ");
+		command.append(fitems[i].getName());
+	    }
+	}
 
-		Utility.Condition condition
-				= new IMAPMessage.FetchProfileCondition(fp, fitems);
+	Utility.Condition condition =
+	    new IMAPMessage.FetchProfileCondition(fp, fitems);
 
-		// Acquire the Folder's MessageCacheLock.
-		synchronized (messageCacheLock) {
+        // Acquire the Folder's MessageCacheLock.
+        synchronized (messageCacheLock) {
+
+	    // check again to make sure folder is still open
+	    checkOpened();
 
 	    // Apply the test, and get the sequence-number set for
-			// the messages that need to be prefetched.
-			UIDSet[] uidsets = toUIDSet(msgs, condition);
+	    // the messages that need to be prefetched.
+	    UIDSet[] uidsets = toUIDSet(msgs, condition); //SONICLE
 
-			if (uidsets == null) // We already have what we need.
-			{
-				return;
-			}
+	    if (uidsets == null) //SONICLE
+		// We already have what we need.
+		return;
 
-			Response[] r = null;
-			Vector v = new Vector(); // to collect non-FETCH responses &
-			// unsolicited FETCH FLAG responses 
-			r=(Response[])doCommand(new UIDFetchCommand(uidsets,command.toString()));
+	    Response[] r = null;
+	    // to collect non-FETCH responses & unsolicited FETCH FLAG responses 
+	    List<Response> v = new ArrayList<Response>();
+		r=(Response[])doCommand(new UIDFetchCommand(uidsets,command.toString())); //SONICLE
 
-			if (r == null) {
-				return;
-			}
+	    if (r == null)
+		return;
+	   
+	    for (int i = 0; i < r.length; i++) {
+		if (r[i] == null)
+		    continue;
+		if (!(r[i] instanceof FetchResponse)) {
+		    v.add(r[i]); // Unsolicited Non-FETCH response
+		    continue;
+		}
 
-			for (int i = 0; i < r.length; i++) {
-				if (r[i] == null) {
-					continue;
-				}
-				if (!(r[i] instanceof FetchResponse)) {
-					v.addElement(r[i]); // Unsolicited Non-FETCH response
-					continue;
-				}
+		// Got a FetchResponse.
+		FetchResponse f = (FetchResponse)r[i];
+		// Get the corresponding message.
+		SonicleIMAPMessage msg = (SonicleIMAPMessage)getMessageByUID(f.getItem(UID.class).uid); //SONICLE
 
-				// Got a FetchResponse.
-				FetchResponse f = (FetchResponse) r[i];
-				// Get the corresponding message.
-				SonicleIMAPMessage msg = (SonicleIMAPMessage)getMessageByUID(f.getItem(UID.class).uid);
+		int count = f.getItemCount();
+		boolean unsolicitedFlags = false;
 
-				int count = f.getItemCount();
-				boolean unsolicitedFlags = false;
-
-				for (int j = 0; j < count; j++) {
-					Item item = f.getItem(j);
-					// Check for the FLAGS item
-					if (item instanceof Flags
-							&& (!fp.contains(FetchProfile.Item.FLAGS)
-							|| msg == null)) {
-						// Ok, Unsolicited FLAGS update.
-						unsolicitedFlags = true;
-					} else if (msg != null) {
-						msg.handleFetchItem(item, hdrs, allHeaders);
-					}
-				}
-				if (msg != null) {
-					msg.handleExtensionFetchItems(f.getExtensionItems());
-				}
+		for (int j = 0; j < count; j++) {
+		    Item item = f.getItem(j);
+		    // Check for the FLAGS item
+		    if (item instanceof Flags &&
+			    (!fp.contains(FetchProfile.Item.FLAGS) ||
+				msg == null)) {
+			// Ok, Unsolicited FLAGS update.
+			unsolicitedFlags = true;
+		    } else if (msg != null)
+			msg.handleFetchItem(item, hdrs, allHeaders);
+		}
+		if (msg != null)
+		    msg.handleExtensionFetchItems(f.getExtensionItems());
 
 		// If this response contains any unsolicited FLAGS
-				// add it to the unsolicited response vector
-				if (unsolicitedFlags) {
-					v.addElement(f);
-				}
-			}
+		// add it to the unsolicited response vector
+		if (unsolicitedFlags)
+		    v.add(f);
+	    }
 
-			// Dispatch any unsolicited responses
-			int size = v.size();
-			if (size != 0) {
-				Response[] responses = new Response[size];
-				v.copyInto(responses);
-				handleResponses(responses);
-			}
+	    // Dispatch any unsolicited responses
+	    if (!v.isEmpty()) {
+		Response[] responses = new Response[v.size()];
+		v.toArray(responses);
+		handleResponses(responses);
+	    }
 
-		} // Release messageCacheLock
-	}
-	
+	} // Release messageCacheLock
+    }
 
     /**
      * Handle the given array of Responses.
@@ -1177,103 +1181,100 @@ public class SonicleIMAPFolder extends IMAPFolder {
      * ASSERT: This method must be called only when holding the
      * 	messageCacheLock
      */
-	void handleResponses(Response[] r) {
-		for (int i = 0; i < r.length; i++) {
-			if (r[i] != null) {
-				handleResponse(r[i]);
-			}
-		}
+    void handleResponses(Response[] r) {
+	for (int i = 0; i < r.length; i++) {
+	    if (r[i] != null)
+		handleResponse(r[i]);
 	}
+    }
 	
-	/**
-	 * Create the appropriate IMAP FETCH command items to fetch the requested
-	 * headers.
-	 */
-	private String createHeaderCommand(String[] hdrs) {
-		StringBuffer sb;
-		
-		if (protocol.isREV1()) {
-			sb = new StringBuffer("BODY.PEEK[HEADER.FIELDS (");
-		} else {
-			sb = new StringBuffer("RFC822.HEADER.LINES (");
-		}
+    /**
+     * Create the appropriate IMAP FETCH command items to fetch the
+     * requested headers.
+     */
+    private String createHeaderCommand(String[] hdrs, boolean isRev1) {
+	StringBuffer sb;
 
-		for (int i = 0; i < hdrs.length; i++) {
-			if (i > 0) {
-				sb.append(" ");
-			}
-			sb.append(hdrs[i]);
-		}
+	if (isRev1)
+	    sb = new StringBuffer("BODY.PEEK[HEADER.FIELDS (");
+	else
+	    sb = new StringBuffer("RFC822.HEADER.LINES (");
 
-		if (protocol.isREV1()) {
-			sb.append(")]");
-		} else {
-			sb.append(")");
-		}
-
-		return sb.toString();
+	for (int i = 0; i < hdrs.length; i++) {
+	    if (i > 0)
+		sb.append(" ");
+	    sb.append(hdrs[i]);
 	}
+
+	if (isRev1)
+	    sb.append(")]");
+	else
+	    sb.append(")");
 	
-	private UIDSet[] toUIDSet(Message[] msgs, Utility.Condition cond) throws MessagingException {
-		Vector v = new Vector(1);
-		long current, next;
-		
-		SonicleIMAPMessage msg;
-		for (int i = 0; i < msgs.length; i++) {
-			msg = (SonicleIMAPMessage) msgs[i];
-			if (msg.isExpunged()) // expunged message, skip it
-			{
-				continue;
-			}
+	return sb.toString();
+    }
+	
+    /**
+     * Return UIDSets for the messages.  Note that the UIDs
+     * must have already been fetched for the messages.
+     */
+    private UIDSet[] toUIDSet(Message[] msgs, Utility.Condition cond) throws MessagingException {
+	Vector v = new Vector(1);
+	long current, next;
 
-			//current = msg.getUID();
-			current=getUID(msg);
-			// Apply the condition. If it fails, skip it.
-			if ((cond != null) && !cond.test(msg)) {
-				continue;
-			}
+	SonicleIMAPMessage msg;
+	for (int i = 0; i < msgs.length; i++) {
+	    msg = (SonicleIMAPMessage)msgs[i];
+	    if (msg.isExpunged()) // expunged message, skip it
+		continue;
 
-			UIDSet set = new UIDSet();
-			set.start = current;
+	    //current = msg.getUID();
+		current=getUID(msg);
+		// Apply the condition. If it fails, skip it.
+		if ((cond != null) && !cond.test(msg)) {
+			continue;
+		}
+ 
+	    UIDSet set = new UIDSet();
+	    set.start = current;
 
-			// Look for contiguous sequence numbers
-			for (++i; i < msgs.length; i++) {
-				// get next message
-				msg = (SonicleIMAPMessage) msgs[i];
+	    // Look for contiguous UIDs
+	    for (++i; i < msgs.length; i++) {
+		// get next message
+		msg = (SonicleIMAPMessage)msgs[i];
 
-				if (msg.isExpunged()) // expunged message, skip it
-				{
-					continue;
-				}
-				next = msg.getUID();
+		if (msg.isExpunged()) // expunged message, skip it
+		    continue;
+		next = msg.getUID();
 
-				// Does this message match our condition ?
-				if ((cond != null) && !cond.test(msg)) {
-					continue;
-				}
-
-				if (next == current + 1) {
-					current = next;
-				} else { // break in sequence
-					// We need to reexamine this message at the top of
-					// the outer loop, so decrement 'i' to cancel the
-					// outer loop's autoincrement 
-					i--;
-					break;
-				}
-			}
-			set.end = current;
-			v.addElement(set);
+		// Does this message match our condition ?
+		if ((cond != null) && !cond.test(msg)) {
+			continue;
 		}
 
-		if (v.isEmpty()) // No valid messages
-		{
-			return null;
-		} else {
-			UIDSet[] sets = new UIDSet[v.size()];
-			v.copyInto(sets);
-			return sets;
+		if (next == current+1)
+		    current = next;
+		else { // break in sequence
+		    // We need to reexamine this message at the top of
+		    // the outer loop, so decrement 'i' to cancel the
+		    // outer loop's autoincrement 
+		    i--;
+		    break;
 		}
+	    }
+	    set.end = current;
+	    v.addElement(set);
 	}
+
+	if (v.isEmpty()) // No valid messages
+	    return null;
+	else {
+	    UIDSet[] sets = new UIDSet[v.size()];
+	    v.copyInto(sets);
+	    return sets;
+	}
+    }
+
+	
 	
 }
