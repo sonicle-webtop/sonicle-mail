@@ -423,7 +423,7 @@ public class SieveScriptBuilder {
 			return new StringBuilder()
 				.append("reject")
 				.append(" ")
-				.append(asValueArgument(action.getArgument()))
+				.append(printTextValue(action.getArgument()))
 				.toString();
 			
 		} else if (EnumUtils.equals(method, SieveActionMethod.REDIRECT)) {
@@ -540,12 +540,12 @@ public class SieveScriptBuilder {
 		public Filter(String name, SieveMatch match, Collection<SieveRule> rules, Collection<SieveAction> actions) {
 			this.name = name;
 			this.match = match;
-			this.rules = (rules != null) ? new ArrayList<>(rules) : new ArrayList<SieveRule>();
-			this.actions = (actions != null) ? new ArrayList<>(actions) : new ArrayList<SieveAction>();
+			this.rules = (rules != null) ? new ArrayList<>(rules) : new ArrayList<>();
+			this.actions = (actions != null) ? new ArrayList<>(actions) : new ArrayList<>();
 		}
 		
 		public boolean isEmpty() {
-			return rules.isEmpty() || actions.isEmpty();
+			return actions.isEmpty() || (!SieveMatch.ALL_MESSAGES.equals(match) && rules.isEmpty());
 		}
 	}
 }
