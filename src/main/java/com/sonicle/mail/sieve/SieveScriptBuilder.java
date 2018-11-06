@@ -34,10 +34,13 @@
 package com.sonicle.mail.sieve;
 
 import com.sonicle.commons.EnumUtils;
+import com.sonicle.commons.time.DateTimeUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormatter;
 
 /**
  *
@@ -50,6 +53,8 @@ public class SieveScriptBuilder {
 	private static final String REQUIRE_IMAP4FLAGS = "imap4flags";
 	private static final String REQUIRE_REJECT = "reject";
 	private static final String REQUIRE_VACATION = "vacation";
+	private static final String REQUIRE_DATE = "date";
+	private static final String REQUIRE_RELATIONAL = "relational";
 	
 	private final HashSet<String> requires = new HashSet<>();
 	private String spamFolder = null;
@@ -136,6 +141,49 @@ public class SieveScriptBuilder {
 		StringBuilder sb = new StringBuilder();
 		requires.add(REQUIRE_VACATION);
 		
+		
+		if(vacation.getActivationEndDate() != null || vacation.getActivationStartDate() != null) {
+			
+		requires.add(REQUIRE_DATE);
+		requires.add(REQUIRE_RELATIONAL);
+		
+		sb.append("if");
+		sb.append(" ");
+		sb.append("allof(currentdate");
+		sb.append(" ");
+		sb.append(":value");
+		sb.append(" ");
+		sb.append('"' + "ge" + '"');
+		sb.append(" ");
+		sb.append('"' + "date" + '"');
+		sb.append(" ");
+		sb.append('"');
+	
+		DateTimeFormatter dateTimeFormatter = DateTimeUtils.createFormatter("yyyy-MM-dd'T'HH:mm:ss.SSS", DateTimeZone.UTC);
+		String startDate  = dateTimeFormatter.print(vacation.getActivationStartDate());
+		
+		sb.append(printValue(startDate));
+		sb.append('"' + ",");
+		sb.append("\n");
+		sb.append("currentdate");
+		sb.append(" ");
+		sb.append(":value");
+		sb.append(" ");
+		sb.append('"' + "le" + '"');
+		sb.append(" ");
+		sb.append('"' + "date" + '"');
+		sb.append(" ");
+		sb.append('"');
+		
+		String endDate = dateTimeFormatter.print(vacation.getActivationEndDate());
+		
+		sb.append(printValue(endDate));
+		sb.append('"' + ")");
+		sb.append("\n{");
+		
+		}
+		
+		
 		sb.append("vacation");
 		sb.append(" ");
 		
@@ -170,8 +218,11 @@ public class SieveScriptBuilder {
 			sb.append(printTextValue(vacation.getMessage()));
 		}
 		
-		sb.append(";\n");
-		
+		sb.append(";");
+		if(vacation.getActivationEndDate() != null || vacation.getActivationStartDate() != null) {
+			sb.append("}");
+		}
+		sb.append("\n");
 		return sb.toString();
 	}
 	
