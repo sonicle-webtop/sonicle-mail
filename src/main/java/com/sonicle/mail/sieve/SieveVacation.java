@@ -34,6 +34,7 @@ package com.sonicle.mail.sieve;
 
 import javax.mail.internet.InternetAddress;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 /**
  *
@@ -45,9 +46,10 @@ public class SieveVacation {
 	private String message;
 	private String addresses;
 	private Short daysInterval;
-	private DateTime activationStartDate;
-	private DateTime activationEndDate;
 	private Boolean skipMailingLists;
+	private DateTimeZone activationTimeZone;
+	private DateTime activationStart;
+	private DateTime activationEnd;
 	
 	public SieveVacation() {}
 	
@@ -90,28 +92,40 @@ public class SieveVacation {
 	public void setDaysInterval(Short daysInterval) {
 		this.daysInterval = daysInterval;
 	}
-
-	public DateTime getActivationStartDate() {
-		return activationStartDate;
-	}
-
-	public void setActivationStartDate(DateTime activationStartDate) {
-		this.activationStartDate = activationStartDate;
-	}
-
-	public DateTime getActivationEndDate() {
-		return activationEndDate;
-	}
-
-	public void setActivationEndDate(DateTime activationEndDate) {
-		this.activationEndDate = activationEndDate;
-	}
-
+	
 	public Boolean getSkipMailingLists() {
 		return skipMailingLists;
 	}
 
 	public void setSkipMailingLists(Boolean skipMailingLists) {
 		this.skipMailingLists = skipMailingLists;
+	}
+	
+	public DateTimeZone getActivationTimeZone() {
+		return activationTimeZone;
+	}
+
+	public void setActivationTimeZone(DateTimeZone activationTimeZone) {
+		this.activationTimeZone = activationTimeZone;
+	}
+
+	public DateTime getActivationStartDate() {
+		return activationStart;
+	}
+
+	public void setActivationStart(DateTime activationStart) {
+		this.activationStart = activationStart;
+	}
+
+	public DateTime getActivationEnd() {
+		return activationEnd;
+	}
+
+	public void setActivationEnd(DateTime activationEnd) {
+		this.activationEnd = activationEnd;
+	}
+	
+	public boolean hasAutoActivation() {
+		return (getActivationTimeZone() != null) && (getActivationEnd() != null || getActivationStartDate() != null);
 	}
 }

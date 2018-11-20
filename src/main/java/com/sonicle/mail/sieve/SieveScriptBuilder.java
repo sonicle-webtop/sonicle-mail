@@ -39,8 +39,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import org.apache.commons.lang3.StringUtils;
-import org.joda.time.DateTimeZone;
+import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 /**
  *
@@ -53,6 +54,7 @@ public class SieveScriptBuilder {
 	private static final String REQUIRE_IMAP4FLAGS = "imap4flags";
 	private static final String REQUIRE_REJECT = "reject";
 	private static final String REQUIRE_VACATION = "vacation";
+	private static final String REQUIRE_VACATION_SECONDS = "vacation-seconds";
 	private static final String REQUIRE_DATE = "date";
 	private static final String REQUIRE_RELATIONAL = "relational";
 	
@@ -93,14 +95,10 @@ public class SieveScriptBuilder {
 	
 	private String requires() {
 		StringBuilder sb = new StringBuilder();
-		
 		if (!requires.isEmpty()) {
-			sb.append("require");
-			sb.append(" ");
-			sb.append("[");
-
+			sb.append("require [");
 			int i = 0;
-			for(String require : requires) {
+			for (String require : requires) {
 				i++;
 				sb.append("\"");
 				sb.append(require);
@@ -109,11 +107,9 @@ public class SieveScriptBuilder {
 					sb.append(", ");
 				}
 			}
-
-			sb.append("]");
-			sb.append(";\n");
+			sb.append("];");
+			sb.append("\n");
 		}
-		
 		return sb.toString();
 	}
 	
@@ -141,94 +137,87 @@ public class SieveScriptBuilder {
 		StringBuilder sb = new StringBuilder();
 		requires.add(REQUIRE_VACATION);
 		
-		
-		if(vacation.getActivationEndDate() != null || vacation.getActivationStartDate() != null) {
+		if (vacation.hasAutoActivation()) {
+			DateTimeFormatter isoFmt = ISODateTimeFormat.dateTimeNoMillis();
+			DateTimeFormatter offsetFmt = DateTimeUtils.createFormatter("Z");
 			
-		requires.add(REQUIRE_DATE);
-		requires.add(REQUIRE_RELATIONAL);
-		
-		sb.append("if");
-		sb.append(" ");
-		sb.append("allof(currentdate");
-		sb.append(" ");
-		sb.append(":value");
-		sb.append(" ");
-		sb.append('"' + "ge" + '"');
-		sb.append(" ");
-		sb.append('"' + "date" + '"');
-		sb.append(" ");
-		sb.append('"');
-	
-		DateTimeFormatter dateTimeFormatter = DateTimeUtils.createFormatter("yyyy-MM-dd'T'HH:mm:ss.SSS", DateTimeZone.UTC);
-		String startDate  = dateTimeFormatter.print(vacation.getActivationStartDate());
-		
-		sb.append(printValue(startDate));
-		sb.append('"' + ",");
-		sb.append("\n");
-		sb.append("currentdate");
-		sb.append(" ");
-		sb.append(":value");
-		sb.append(" ");
-		sb.append('"' + "le" + '"');
-		sb.append(" ");
-		sb.append('"' + "date" + '"');
-		sb.append(" ");
-		sb.append('"');
-		
-		String endDate = dateTimeFormatter.print(vacation.getActivationEndDate());
-		
-		sb.append(printValue(endDate));
-		sb.append('"' + ")");
-		sb.append("\n{");
-		
+			requires.add(REQUIRE_DATE);
+			requires.add(REQUIRE_RELATIONAL);
+			
+			sb.append("if allof (");
+			int count = 0;
+			if (vacation.getActivationStartDate() != null) {
+				//if (count > 0) sb.append(", ");
+				DateTime dt = vacation.getActivationStartDate().withZone(vacation.getActivationTimeZone());
+				sb.append("currentdate :zone ");
+				sb.append("\"");
+				sb.append(printValue(offsetFmt.print(dt)));
+				sb.append("\"");
+				sb.append(" :value \"ge\" \"iso8601\" ");
+				sb.append("\"");
+				sb.append(printValue(isoFmt.print(dt)));
+				sb.append("\"");
+				count++;
+			}
+			if (vacation.getActivationEnd() != null) {
+				if (count > 0) sb.append(", ");
+				DateTime dt = vacation.getActivationEnd().withZone(vacation.getActivationTimeZone());
+				sb.append("currentdate :zone ");
+				sb.append("\"");
+				sb.append(printValue(offsetFmt.print(dt)));
+				sb.append("\"");
+				sb.append(" :value \"lt\" \"iso8601\" ");
+				sb.append("\"");
+				sb.append(printValue(isoFmt.print(dt)));
+				sb.append("\"");
+				//count++;
+			}
+			sb.append(") {");
+			sb.append("\n");
 		}
 		
-		
-		sb.append("vacation");
-		sb.append(" ");
-		
+		sb.append("vacation ");
+		sb.append(":days ");
 		Short days = (vacation.getDaysInterval() != null) ? vacation.getDaysInterval() : 1;
-		sb.append(":days");
-		sb.append(" ");
 		sb.append(printValue(days));
-		sb.append(" ");
 		
+		//requires.add(REQUIRE_VACATION_SECONDS);
+		//sb.append(":seconds ");
+		//sb.append(printValue(10));
+		
+		sb.append(" ");
 		if (!StringUtils.isBlank(vacation.getSubject())) {
-			sb.append(":subject");
-			sb.append(" ");
+			sb.append(":subject ");
 			sb.append(printQuotedValue(vacation.getSubject()));
 			sb.append(" ");
 		}
-		
 		if (vacation.getFrom() != null) {
-			sb.append(":from");
-			sb.append(" ");
+			sb.append(":from ");
 			sb.append(printQuotedValue(vacation.getFrom().getAddress()));
 			sb.append(" ");
 		}
-		
 		if (!StringUtils.isBlank(vacation.getAddresses())) {
-			sb.append(":addresses");
-			sb.append(" ");
+			sb.append(":addresses ");
 			sb.append(printQuotedArray(extractAddresses(vacation.getAddresses())));
 			sb.append(" ");
 		}
-		
 		if (!StringUtils.isBlank(vacation.getMessage())) {
 			sb.append(printTextValue(vacation.getMessage()));
 		}
-		
 		sb.append(";");
-		if(vacation.getActivationEndDate() != null || vacation.getActivationStartDate() != null) {
-			sb.append("}");
-		}
 		sb.append("\n");
+		
+		if (vacation.hasAutoActivation()) {
+			sb.append("}");
+			sb.append("\n");
+		}
+		
 		return sb.toString();
 	}
 	
 	private String[] extractAddresses(String addresses) {
-		String[] addrs = StringUtils.split(vacation.getAddresses(), ",");
-		for(int i=0; i<addrs.length; i++) {
+		String[] addrs = StringUtils.split(addresses, ",");
+		for (int i=0; i<addrs.length; i++) {
 			addrs[i] = StringUtils.trim(addrs[i]);
 		}
 		return addrs;
