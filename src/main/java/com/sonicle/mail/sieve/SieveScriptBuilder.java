@@ -178,7 +178,7 @@ public class SieveScriptBuilder {
 		
 		sb.append("vacation ");
 		sb.append(":days ");
-		Short days = (vacation.getDaysInterval() != null) ? vacation.getDaysInterval() : 1;
+		Short days = (vacation.getDaysInterval() != null) ? vacation.getDaysInterval() : 7;
 		sb.append(printValue(days));
 		
 		//requires.add(REQUIRE_VACATION_SECONDS);
