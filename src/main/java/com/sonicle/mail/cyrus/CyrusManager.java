@@ -70,9 +70,6 @@ public class CyrusManager {
 	}
 	
 	public void addMailbox(String user) throws MessagingException {
-		if (!InternetAddressUtils.isAddressValid(user)) {
-			throw new IllegalArgumentException(LangUtils.formatMessage("Invalid user '{}'. It has to be in the form: user@domain.tld", user));
-		}
 		Store store = null;
 		try {
 			store = createStore();
