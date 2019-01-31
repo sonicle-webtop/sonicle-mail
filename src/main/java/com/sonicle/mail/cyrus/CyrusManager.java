@@ -44,6 +44,7 @@ import javax.mail.MessagingException;
 import javax.mail.NoSuchProviderException;
 import javax.mail.Session;
 import javax.mail.Store;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +75,7 @@ public class CyrusManager {
 		try {
 			store = createStore();
 			store.connect(host, port, adminUser, adminPassword);
-			addUserFolder(store, user);
+			addUserFolder(store, StringUtils.lowerCase(user));
 		} finally {
 			closeQuietly(store);
 		}
