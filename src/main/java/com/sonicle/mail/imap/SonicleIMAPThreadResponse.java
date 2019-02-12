@@ -37,6 +37,10 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
 		super(r);
 		this.folder=folder;
 		this.fetchProfile=fetchProfile;
+		// Set the first uid as parent if parent doesn't exists (orphaned siblings)
+		String data=new String(buffer);
+		data=data.replaceAll("\\(\\(([0-9]+) ", "($1 (");
+		buffer=data.getBytes();
 	}
 	  
     public String parse() throws MessagingException {
