@@ -61,13 +61,19 @@ public class CyrusManager {
 	private final String protocol;
 	private final String adminUser;
 	private final String adminPassword;
+	private final Properties properties;
 	
 	public CyrusManager(String host, int port, String protocol, String adminUser, String adminPassword) {
+		this(host, port, protocol, adminUser, adminPassword, null);
+	}
+	
+	public CyrusManager(String host, int port, String protocol, String adminUser, String adminPassword, Properties properties) {
 		this.host = host;
 		this.port = port;
 		this.protocol = protocol;
 		this.adminUser = adminUser;
 		this.adminPassword = adminPassword;
+		this.properties = properties;
 	}
 	
 	public void addMailbox(String user) throws MessagingException {
@@ -82,7 +88,7 @@ public class CyrusManager {
 	}
 	
 	private Store createStore() throws NoSuchProviderException {
-		Properties props = new Properties(System.getProperties());
+		Properties props = new Properties((properties == null) ? System.getProperties() : properties);
 		props.setProperty("mail.store.protocol", protocol);
 		props.setProperty("mail.store.port", String.valueOf(port));
 		return Session.getInstance(props, null).getStore(protocol);
