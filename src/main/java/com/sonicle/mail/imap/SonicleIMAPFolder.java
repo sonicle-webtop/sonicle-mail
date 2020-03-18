@@ -569,7 +569,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
                 if (!fp.contains(FetchProfile.Item.ENVELOPE))
                     fp.add(FetchProfile.Item.ENVELOPE);
             }
-            else if (xterm instanceof FlagSortTerm || xterm instanceof StatusSortTerm) {
+            else if (xterm instanceof FlagSortTerm || xterm instanceof StatusSortTerm || xterm instanceof SeenSortTerm) {
                 if (!fp.contains(FetchProfile.Item.FLAGS))
                     fp.add(FetchProfile.Item.FLAGS);
             }
@@ -668,28 +668,14 @@ public class SonicleIMAPFolder extends IMAPFolder {
               java.util.Date date2=null;
               try { date1=m1.getReceivedDate(); } catch(Exception exc) { exc.printStackTrace();}
               try { date2=m2.getReceivedDate(); } catch(Exception exc) {exc.printStackTrace();}
-              if (date1==null) {
-                if (date2==null) result=0;
-                else result=-1;
-              } else if (date2==null) {
-                result=1;
-              } else {
-                result=date1.compareTo(date2);
-              }
+			  result=compareDates(date1,date2,sort.reversed);
           }
           else if (sort instanceof DateSortTerm) {
               java.util.Date date1=null;
               java.util.Date date2=null;
               try { date1=m1.getSentDate(); if (date1==null) date1=m1.getReceivedDate(); } catch(Exception exc) { }
               try { date2=m2.getSentDate(); if (date2==null) date2=m2.getReceivedDate(); } catch(Exception exc) { }
-              if (date1==null) {
-                if (date2==null) result=0;
-                else result=-1;
-              } else if (date2==null) {
-                result=1;
-              } else {
-                result=date1.compareTo(date2);
-              }
+			  result=compareDates(date1,date2,sort.reversed);
           }
           else if (sort instanceof SizeSortTerm) {
               int size1=0;
@@ -709,6 +695,23 @@ public class SonicleIMAPFolder extends IMAPFolder {
                     ?(fl2.contains(Flags.Flag.SEEN)?3:1)
                     :fl2.contains(Flags.Flag.SEEN)?2:0;
                 result=f1-f2;
+				if (result==0) {
+					result=compareDates(m1,m2,sort.reversed);
+				}
+              } catch(MessagingException exc) {
+                result=0;
+              }
+          }
+          else if (sort instanceof SeenSortTerm) {
+              try {
+                Flags fl1=m1.getFlags();
+                Flags fl2=m2.getFlags();
+                int f1=fl1.contains(Flags.Flag.SEEN)?1:0;
+                int f2=fl2.contains(Flags.Flag.SEEN)?1:0;
+                result=f1-f2;
+				if (result==0) {
+					result=compareDates(m1,m2,true);
+				}
               } catch(MessagingException exc) {
                 result=0;
               }
@@ -736,6 +739,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
                     if (fl2.contains(fs)) f2=i;
                 }
                 result=f1-f2;
+				if (result==0) {
+					result=compareDates(m1,m2, true);
+				}
               } catch(MessagingException exc) {
                 exc.printStackTrace();
                 result=0;
@@ -746,6 +752,30 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
           return result;
       }
+	  
+	  private int compareDates(Message m1, Message m2, boolean reversed) {
+		java.util.Date date1=null;
+		java.util.Date date2=null;
+		try { date1=m1.getSentDate(); if (date1==null) date1=m1.getReceivedDate(); } catch(Exception exc) { }
+		try { date2=m2.getSentDate(); if (date2==null) date2=m2.getReceivedDate(); } catch(Exception exc) { }
+		int result=compareDates(date1,date2, reversed);
+		return result;
+	  }
+	  
+	  private int compareDates(Date date1, Date date2, boolean reversed) {
+		int result;
+
+		if (date1==null) {
+		  if (date2==null) result=0;
+		  else result=-1;
+		} else if (date2==null) {
+		  result=1;
+		} else {
+		  result=date1.compareTo(date2);
+		}
+		if (reversed) result*=-1;
+		return result;
+	  }
 
       public boolean equals(Message m) {
         /**@todo Implement this java.util.Comparator method*/
