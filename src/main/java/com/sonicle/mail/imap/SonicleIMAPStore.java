@@ -41,10 +41,4 @@ public class SonicleIMAPStore extends IMAPStore {
 						   );
     }
 	
-	public void forceDisconnect() throws MessagingException {
-		sonicleIMAPProtocol.disconnect();
-		close();
-	}
-	
-	
 }
