@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.util.Vector;
 
-import javax.mail.*;
-import javax.mail.internet.*;
+import jakarta.mail.*;
+import jakarta.mail.internet.*;
 
 
 /**

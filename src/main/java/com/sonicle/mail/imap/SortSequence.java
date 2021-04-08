@@ -6,9 +6,8 @@
 package com.sonicle.mail.imap;
 
 import com.sun.mail.iap.*;
-import com.sun.mail.imap.protocol.SearchSequence;
 import java.io.*;
-import javax.mail.search.*;
+import jakarta.mail.search.*;
 
 /**
  *
@@ -41,8 +40,8 @@ public class SortSequence {
             sort=sort.next();
         }
         sortArg.writeAtom("("+sortSB.toString()+")");
-        Argument searchArg=null;
-        if (term!=null) searchArg=(new com.sonicle.mail.imap.SearchSequence()).generateSequence(term, charset);
+        Argument searchArg;
+        if (term!=null) searchArg=(new com.sun.mail.imap.protocol.SearchSequence()).generateSequence(term, charset);
         else { searchArg=new Argument(); searchArg.writeAtom("ALL"); }
 
         Argument args=new Argument();

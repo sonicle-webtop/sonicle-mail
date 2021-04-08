@@ -8,7 +8,7 @@ package com.sonicle.mail.imap.test;
 import com.sonicle.mail.imap.SonicleIMAPFolder;
 import com.sonicle.mail.imap.SonicleIMAPMessage;
 import java.util.Properties;
-import javax.mail.*;
+import jakarta.mail.*;
 import javax.swing.JOptionPane;
 /**
  *
@@ -29,7 +29,7 @@ public class Thread {
 		store.connect(host, 143, user, password);
 		SonicleIMAPFolder folder=(SonicleIMAPFolder)store.getFolder("INBOX");
 		folder.open(Folder.READ_ONLY);
-		javax.mail.search.FromStringTerm fst=new javax.mail.search.FromStringTerm("fullone");
+		jakarta.mail.search.FromStringTerm fst=new jakarta.mail.search.FromStringTerm("fullone");
 		FetchProfile FP = new FetchProfile();
 		FP.add(FetchProfile.Item.ENVELOPE);
 		FP.add(FetchProfile.Item.FLAGS);

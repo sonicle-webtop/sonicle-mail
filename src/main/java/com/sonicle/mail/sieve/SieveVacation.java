@@ -32,7 +32,7 @@
  */
 package com.sonicle.mail.sieve;
 
-import javax.mail.internet.InternetAddress;
+import jakarta.mail.internet.InternetAddress;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 

@@ -7,9 +7,9 @@ package com.sonicle.mail.imap.test;
 
 import com.sun.mail.imap.IMAPMessage;
 import java.util.Properties;
-import javax.mail.*;
-import javax.mail.search.BodyTerm;
-import javax.mail.search.RecipientStringTerm;
+import jakarta.mail.*;
+import jakarta.mail.search.BodyTerm;
+import jakarta.mail.search.RecipientStringTerm;
 import javax.swing.JOptionPane;
 /**
  *

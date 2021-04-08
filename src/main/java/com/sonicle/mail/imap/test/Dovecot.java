@@ -10,7 +10,7 @@ import com.sun.mail.imap.IMAPStore;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import javax.mail.*;
+import jakarta.mail.*;
 import javax.swing.JOptionPane;
 /**
  *

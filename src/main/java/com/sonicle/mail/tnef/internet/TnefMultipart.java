@@ -21,10 +21,10 @@ package com.sonicle.mail.tnef.internet;
 
 
 import com.sonicle.mail.tnef.*;
-import javax.mail.*;
-import javax.mail.internet.MimeMultipart;
-import javax.mail.internet.ContentType;
-import javax.activation.DataSource;
+import jakarta.mail.*;
+import jakarta.mail.internet.MimeMultipart;
+import jakarta.mail.internet.ContentType;
+import jakarta.activation.DataSource;
 import java.util.*;
 import java.io.*;
 

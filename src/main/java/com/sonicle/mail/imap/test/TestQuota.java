@@ -7,7 +7,7 @@ package com.sonicle.mail.imap.test;
 
 import com.sun.mail.imap.IMAPStore;
 import java.util.Properties;
-import javax.mail.*;
+import jakarta.mail.*;
 import javax.swing.JOptionPane;
 /**
  *

@@ -18,9 +18,9 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Vector;
-import javax.mail.*;
-import javax.mail.internet.MimeUtility;
-import javax.mail.search.*;
+import jakarta.mail.*;
+import jakarta.mail.internet.MimeUtility;
+import jakarta.mail.search.*;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -952,7 +952,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 	 * @param uids
 	 * @return 
      */
-	@Override
+/*	@Override
     public synchronized Message[] getMessagesByUID(long[] uids)
 			throws MessagingException {
 		checkOpened(); // insure that folder is open
@@ -980,25 +980,6 @@ public class SonicleIMAPFolder extends IMAPFolder {
 					// Issue UID FETCH request for given uids
 					int len=unavailUids.length;
 					UID[] ua;
-					/*
-					//SONICLE: breaks it into banks of 10000 if larger
-					int N=10000;
-					if (len>N) {
-						//System.out.println("getMessagesByUID: more than 10000");
-						ua=new UID[len];
-						for(int i=0;i<len;i+=N) {
-							int remaining=len-i;
-							int n=(remaining>=N?N:remaining);
-							//System.out.println("getMessagesByUID: fetching "+n+" messages, from "+i);
-							long[] unUids=new long[n];
-							System.arraycopy(unavailUids, i, unUids, 0, n);
-							UID[] uax = getProtocol().fetchSequenceNumbers(unUids);
-							System.arraycopy(uax, 0, ua, i, n);
-						}
-					} else {
-						//System.out.println("getMessagesByUID: less than 10000");
-						ua = getProtocol().fetchSequenceNumbers(unavailUids);
-					}*/
 					ua = fetchSequenceNumbers(unavailUids);
 					
 					SonicleIMAPMessage m;
@@ -1044,7 +1025,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 			this.uid=uid;
 		}
 	}
-	
+*/	
 	
 	
 	

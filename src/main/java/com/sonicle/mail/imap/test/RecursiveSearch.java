@@ -8,8 +8,8 @@ package com.sonicle.mail.imap.test;
 import com.sonicle.mail.imap.SonicleIMAPFolder;
 import java.util.Properties;
 import java.util.Vector;
-import javax.mail.Session;
-import javax.mail.Store;
+import jakarta.mail.Session;
+import jakarta.mail.Store;
 import javax.swing.JOptionPane;
 
 /**

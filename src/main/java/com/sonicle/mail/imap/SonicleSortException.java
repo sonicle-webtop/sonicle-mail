@@ -1,6 +1,6 @@
 package com.sonicle.mail.imap;
 
-import javax.mail.MessagingException;
+import jakarta.mail.MessagingException;
 
 
 /**

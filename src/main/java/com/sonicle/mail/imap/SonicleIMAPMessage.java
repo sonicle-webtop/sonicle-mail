@@ -9,7 +9,7 @@ import com.sun.mail.imap.IMAPMessage;
 import com.sun.mail.imap.protocol.Item;
 import java.util.Date;
 import java.util.Map;
-import javax.mail.MessagingException;
+import jakarta.mail.MessagingException;
 
 /**
  *

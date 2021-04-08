@@ -22,9 +22,9 @@ package com.sonicle.mail.tnef.internet;
 import com.sonicle.mail.tnef.*;
 import java.io.*;
 import java.util.Enumeration;
-import javax.mail.*;
-import javax.mail.internet.*;
-import javax.activation.*;
+import jakarta.mail.*;
+import jakarta.mail.internet.*;
+import jakarta.activation.*;
 
 
 /**

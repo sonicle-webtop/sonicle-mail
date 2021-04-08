@@ -8,9 +8,9 @@ package com.sonicle.mail.imap;
 import com.sun.mail.imap.protocol.IMAPResponse;
 import com.sun.mail.util.ASCIIUtility;
 import java.util.ArrayList;
-import javax.mail.FetchProfile;
-import javax.mail.Message;
-import javax.mail.MessagingException;
+import jakarta.mail.FetchProfile;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
 import org.apache.commons.lang3.StringUtils;
 
 

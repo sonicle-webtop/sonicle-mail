@@ -8,9 +8,9 @@ package com.sonicle.mail.imap;
 import com.sun.mail.iap.ProtocolException;
 import com.sun.mail.imap.IMAPStore;
 import java.io.IOException;
-import javax.mail.MessagingException;
-import javax.mail.Session;
-import javax.mail.URLName;
+import jakarta.mail.MessagingException;
+import jakarta.mail.Session;
+import jakarta.mail.URLName;
 
 /**
  *

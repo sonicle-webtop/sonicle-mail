@@ -13,8 +13,8 @@ import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.protocol.IMAPProtocol;
 import com.sun.mail.imap.protocol.IMAPResponse;
 import com.sun.mail.imap.protocol.SearchSequence;
-import javax.mail.search.SearchException;
-import javax.mail.search.SearchTerm;
+import jakarta.mail.search.SearchException;
+import jakarta.mail.search.SearchTerm;
 /**
  *
  * @author gbulfon

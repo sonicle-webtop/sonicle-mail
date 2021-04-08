@@ -25,7 +25,7 @@ public class SonicleIMAPProtocol extends IMAPProtocol {
 	
 	
 	//Always tries to translate msgnum into uid, that's what we're working with
-	@Override
+/*	@Override
     public Response[] fetch(int msg, String what) 
 			throws ProtocolException {
 		return fetch(String.valueOf(msg), what, false);
@@ -39,5 +39,5 @@ public class SonicleIMAPProtocol extends IMAPProtocol {
 		} else {
 			return command("FETCH " + msgSequence + " (" + what + ")", null);
 		}
-	}
+	}*/
 }

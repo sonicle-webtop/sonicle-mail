@@ -6,8 +6,8 @@
 package com.sonicle.mail.imap;
 
 import com.sun.mail.imap.IMAPSSLStore;
-import javax.mail.Session;
-import javax.mail.URLName;
+import jakarta.mail.Session;
+import jakarta.mail.URLName;
 
 /**
  *
