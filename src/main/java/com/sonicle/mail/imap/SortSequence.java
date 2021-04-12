@@ -15,7 +15,7 @@ import jakarta.mail.search.*;
  */
 public class SortSequence {
 
-    static Argument generateSequence(SonicleSortTerm sort, SearchTerm term, String charset)
+    static Argument generateSequence(SonicleSortTerm sort, SearchTerm term, String charset, boolean esort)
 		throws SonicleSortException, SearchException, IOException {
         Argument sortArg=new Argument();
         StringBuffer sortSB=new StringBuffer();
@@ -39,7 +39,11 @@ public class SortSequence {
             ++sortArgs;
             sort=sort.next();
         }
-        sortArg.writeAtom("("+sortSB.toString()+")");
+		//force usage of ESORT, which my allow imap servers to use
+		//an extended search algorythm
+		if (esort) sortArg.writeAtom("RETURN (ALL)");
+
+		sortArg.writeAtom("("+sortSB.toString()+")");
         Argument searchArg;
         if (term!=null) searchArg=(new com.sun.mail.imap.protocol.SearchSequence()).generateSequence(term, charset);
         else { searchArg=new Argument(); searchArg.writeAtom("ALL"); }

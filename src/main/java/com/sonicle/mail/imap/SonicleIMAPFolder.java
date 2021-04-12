@@ -469,8 +469,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 		// Generate a search-sequence with the given charset
 		Argument args = SortSequence.generateSequence(sort,term,
-				  charset == null ? null :
-							MimeUtility.javaCharset(charset)
+					charset == null ? null :
+							MimeUtility.javaCharset(charset),
+					((IMAPStore)store).hasCapability("ESORT")
 				);
 
 			Response[] r=(Response[])doCommand(new SortCommand(args));
@@ -516,8 +517,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 		// Generate a search-sequence with the given charset
 		Argument args = SortSequence.generateSequence(sort,term,
-				  charset == null ? null :
-							MimeUtility.javaCharset(charset)
+					charset == null ? null :
+							MimeUtility.javaCharset(charset),
+					((IMAPStore)store).hasCapability("ESORT")
 				);
 
 			Response[] r=(Response[])doCommand(new UIDSortCommand(args));
