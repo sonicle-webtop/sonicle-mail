@@ -41,7 +41,7 @@ public class SortSequence {
         }
 		//force usage of ESORT, which my allow imap servers to use
 		//an extended search algorythm
-		if (esort) sortArg.writeAtom("RETURN (ALL)");
+		//if (esort) sortArg.writeAtom("RETURN (ALL)");
 
 		sortArg.writeAtom("("+sortSB.toString()+")");
         Argument searchArg;
