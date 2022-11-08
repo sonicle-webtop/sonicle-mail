@@ -232,12 +232,29 @@ public class Mailbox {
 		}
 	}
 	
+	public boolean hasOption(final StoreOption option) throws MessagingException {
+		Check.notNull(option, "option");
+		long stamp = lock.readLock();
+		try {
+			if (doIsReady()) {
+				return doCheckStoreOption(option);
+			} else {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
+				return doCheckStoreOption(option);
+			}
+		} finally {
+			lock.unlock(stamp);
+		}
+	}
 	
+	public boolean isDovecot() throws MessagingException {
+		return hasOption(StoreOption.IS_DOVECOT);
+	}
 	
-	
-	
-	
-	
+	public boolean isCyrus() throws MessagingException {
+		return hasOption(StoreOption.IS_CYRUS);
+	}
 	
 	private boolean doIsReady() {
 		return (store != null) && (store.isConnected());
@@ -260,9 +277,17 @@ public class Mailbox {
 					storeOptions.set(StoreOption.ANNOTATIONS);
 				}
 				if (((IMAPStore)store).hasCapability("ID")) {
-					Map<String, String> map = ((IMAPStore)store).id(null);
-					if (map!=null && map.containsKey("name") && map.get("name").equalsIgnoreCase("dovecot")) {
-						storeOptions.set(StoreOption.EXPLICIT_INBOX);
+					final Map<String, String> map = ((IMAPStore)store).id(null);
+					if (map != null) {
+						if (map.containsKey("name")) {
+							final String name = StringUtils.lowerCase(map.get("name"));
+							if ("dovecot".equals(name)) {
+								storeOptions.set(StoreOption.IS_DOVECOT);
+								storeOptions.set(StoreOption.EXPLICIT_INBOX);
+							} else if (StringUtils.startsWith(name, "cyrus")) {
+								storeOptions.set(StoreOption.IS_CYRUS);
+							}
+						}
 					}
 				}
 			}
@@ -330,6 +355,10 @@ public class Mailbox {
 		return config.hasAlternativeRootFolder() ? store.getFolder(config.getRootFolderName()) : store.getDefaultFolder();
 	}
 	
+	private boolean doCheckStoreOption(StoreOption option) {
+		return storeOptions.has(option);
+	}
+	
 	private long upgradeToWriteLock(long rstamp) {
 		long wstamp = lock.tryConvertToWriteLock(rstamp);
 		if (wstamp == 0L) {
@@ -360,10 +389,10 @@ public class Mailbox {
 	}
 	
 	public static enum StoreOption implements BitFlagsEnum<StoreOption> {
-		ANNOTATIONS(1 << 1), EXPLICIT_INBOX(1 << 2);//, OPT3(1 << 3);
+		ANNOTATIONS(1 << 1), EXPLICIT_INBOX(1 << 2), IS_CYRUS(1 << 3), IS_DOVECOT(1 << 4);
 		
-		private int mask = 0;
-		private StoreOption(int mask) { this.mask = mask; }
+		private long mask = 0;
+		private StoreOption(long mask) { this.mask = mask; }
 		@Override
 		public long mask() { return this.mask; }
 	}

@@ -276,6 +276,17 @@ public class StoreUtils {
 		}
 	}
 	
+	public static void issueNoop(final Folder folder) throws MessagingException {
+		Check.notNull(folder, "folder");
+		if (folder instanceof IMAPFolder) {
+			IMAPFolder ifolder = (IMAPFolder)folder;
+			ifolder.doCommand((p) -> {
+				p.simpleCommand("NOOP", null);
+				return null;
+			});
+		}
+	}
+	
 	public static Message[] getMessagesByMessageID(final Folder folder, final String messageId) throws MessagingException {
 		Check.notNull(folder, "folder");
 		Check.notNull(messageId, "messageId");
