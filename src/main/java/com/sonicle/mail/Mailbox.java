@@ -139,6 +139,15 @@ public class Mailbox {
 		}
 	}
 	
+	public boolean isConnected() {
+		long stamp = lock.readLock();
+		try {
+			return doIsReady();
+		} finally {
+			lock.unlock(stamp);
+		}
+	}
+	
 	public void addConnectionListener(final ConnectionListener connectionListener) throws MessagingException {
 		long stamp = lock.readLock();
 		try {
