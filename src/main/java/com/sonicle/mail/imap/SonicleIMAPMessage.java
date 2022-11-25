@@ -28,6 +28,8 @@ public class SonicleIMAPMessage extends IMAPMessage {
 	private int threadIndent=0;
 	private int threadChildren=0;
 	
+	private int peekCount=0;
+	
 	public SonicleIMAPMessage(SonicleIMAPFolder folder, int msgnum) {
 		super(folder,msgnum);
 		threadSize=1;
@@ -130,5 +132,15 @@ public class SonicleIMAPMessage extends IMAPMessage {
     protected void handleExtensionFetchItems(Map extensionItems) {
 		super.handleExtensionFetchItems(extensionItems);
 	}	
+
+	@Override
+	public synchronized void setPeek(boolean peek) {
+		//keep track of setPeek calls
+		peekCount+=peek?1:-1;
+		if ((peek && peekCount==1) || peekCount<=0) super.setPeek(peek);
+		if (peekCount<0) peekCount=0;
+	}
+    
+    
 	
 }
