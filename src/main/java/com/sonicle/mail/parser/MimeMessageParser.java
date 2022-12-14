@@ -217,17 +217,7 @@ public class MimeMessageParser {
 				} else {// else diverso !!!
 					parsed.appendUnknownPart(mpPart, depth);
 					parsed.appendAttachmentPart(mpPart, depth);
-					// Look for a possible CID
-					String filename = parseFileName(mpPart, false);
-					if (filename == null) parseContentID(mpPart);
-					if (filename != null) {
-						if (!parsed.hasCidPart(filename)) parsed.appendCidPart(filename, mpPart, depth);
-					}
-					// Look for a possible URL copy
-					String url = parseContentLocation(mpPart);
-					if (url != null) {
-						if (!parsed.hasUrlPart(filename)) parsed.appendUrlPart(url, mpPart, depth);
-					}
+					evaluateCidPart(mpPart, parsed, depth);
 				}
 			}
 			
@@ -245,7 +235,14 @@ public class MimeMessageParser {
 			final String altDisposition = parseDisposition(altPart);
 			
 			if (isMimeType(altPart, "multipart/*")) {
-				parseMimePartTree(altPart, parsed, depth);
+				if (isMimeType(altPart, "multipart/related")) {
+					displayPart = parseAndFindAlternativeDisplayPart(parseContent(altPart), parsed, depth); 
+					if (isMimeType(altPart, "text/html")) {
+						htmlFound = true;
+					}
+				} else {
+					parseMimePartTree(altPart, parsed, depth);
+				}
 			} else if (isMimeType(altPart, "text/html")) {
 				displayPart = altPart;
 				htmlFound = true;
@@ -270,10 +267,26 @@ public class MimeMessageParser {
 					displayPart = altPart;	
 				}
 			} else {
+				parsed.appendUnknownPart(altPart, depth);
 				parsed.appendAttachmentPart(altPart, depth);
+				evaluateCidPart(altPart, parsed, depth);
 			}
 		}
 		return displayPart;
+	}
+	
+	private static void evaluateCidPart(final Part part, final ParsedMimeMessageComponents parsed, final int depth) {
+		// Look for a possible CID
+		String filename = parseFileName(part, false);
+		if (filename == null) parseContentID(part);
+		if (filename != null) {
+			if (!parsed.hasCidPart(filename)) parsed.appendCidPart(filename, part, depth);
+		}
+		// Look for a possible URL copy
+		String url = parseContentLocation(part);
+		if (url != null) {
+			if (!parsed.hasUrlPart(filename)) parsed.appendUrlPart(url, part, depth);
+		}
 	}
 	
 	public static class ParsedMimeMessageComponents {
