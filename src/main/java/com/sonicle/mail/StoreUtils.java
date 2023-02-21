@@ -126,7 +126,6 @@ public class StoreUtils {
 	public static void createMailbox(final Session session, final StoreProtocol protocol, final String folderPrefix, final String user, final Set<String> acls) throws MessagingException {
 		Check.notNull(session, "session");
 		Check.notNull(protocol, "protocol");
-		Check.notNull(folderPrefix, "folderPrefix");
 		Check.notEmpty(user, "user");
 		
 		Store store = null;
