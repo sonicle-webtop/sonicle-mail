@@ -33,9 +33,11 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.mail.imap.SonicleIMAPFolder;
 import com.sun.mail.imap.ACL;
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPFolder.FetchProfileItem;
+import com.sun.mail.imap.IMAPStore;
 import com.sun.mail.imap.Rights;
 import jakarta.mail.FetchProfile;
 import jakarta.mail.FetchProfile.Item;
@@ -50,14 +52,18 @@ import jakarta.mail.search.HeaderTerm;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.Set;
 import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author malbinola
  */
 public class StoreUtils {
+	private static final Logger LOGGER = (Logger)LoggerFactory.getLogger(StoreUtils.class);
 	public static final FetchProfile FETCH_PROFILE_FLAGS_UID = new FetchProfile();
 	public static final FetchProfile FETCH_PROFILE_HEAD = new FetchProfile();
 	public static final FetchProfile FETCH_PROFILE_UID = new FetchProfile();
@@ -70,6 +76,12 @@ public class StoreUtils {
 		FETCH_PROFILE_FLAGS_UID.add(Item.FLAGS);
 		FETCH_PROFILE_FLAGS_UID.add(UIDFolder.FetchProfileItem.UID);
 		FETCH_PROFILE_UID.add(UIDFolder.FetchProfileItem.UID);
+	}
+	
+	public static Properties useExtendedFolderClasses(final Properties properties) {
+		properties.setProperty("mail.imap.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
+		properties.setProperty("mail.imaps.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
+		return properties;
 	}
 	
 	public static Session createSession(final StoreHostParams params, final int poolSize) throws GeneralSecurityException {
@@ -104,6 +116,51 @@ public class StoreUtils {
 			
 		} else {
 			return Session.getInstance(props);
+		}
+	}
+	
+	public static void createMailbox(final Session session, final StoreProtocol protocol, final String folderPrefix, final String user) throws MessagingException {
+		createMailbox(session, protocol, folderPrefix, user, null);
+	}
+	
+	public static void createMailbox(final Session session, final StoreProtocol protocol, final String folderPrefix, final String user, final Set<String> acls) throws MessagingException {
+		Check.notNull(session, "session");
+		Check.notNull(protocol, "protocol");
+		Check.notNull(folderPrefix, "folderPrefix");
+		Check.notEmpty(user, "user");
+		
+		Store store = null;
+		try {
+			LOGGER.debug("Opening '{}' mailbox...", user);
+			store = open(session, protocol);
+			final char sep = store.getDefaultFolder().getSeparator();
+			final String rootFolderName = rootFolderName(user, folderPrefix, sep);
+			LOGGER.debug("Getting folder '{}'...", rootFolderName);
+			Folder rootFolder = store.getFolder(rootFolderName);
+			if (!rootFolder.exists()) {
+				LOGGER.debug("Folder '{}' NOT exists, creating...", rootFolderName);
+				rootFolder.create(Folder.HOLDS_FOLDERS);
+			}
+			if (acls != null) {
+				LOGGER.debug("Applying ACLs({}) to folder '{}'...", acls.size(), rootFolderName);
+				for (String acl : acls) {
+					final String aclUser = StringUtils.substringBefore(acl, ":");
+					final String rights = StringUtils.substringAfter(acl, ":");
+					LOGGER.trace("ACL => {} : {}", aclUser, rights);
+					applyAcl(rootFolder, aclUser, rights);
+				}
+			}
+			
+		} finally {
+			closeQuietly(store);
+		}
+	}
+	
+	private static String rootFolderName(final String user, final String folderPrefix, final char separator) {
+		if (!StringUtils.isBlank(folderPrefix)) {
+			return folderPrefix + separator + user;
+		} else {
+			return user;
 		}
 	}
 	
@@ -200,12 +257,48 @@ public class StoreUtils {
 		return createFolderIfNecessary(root, name);
 	}
 	
+	public static Folder createFolderIfNecessary(final Store store, final String name, final Set<String> annotations) throws MessagingException {
+		final Folder root = store.getDefaultFolder();
+		return createFolderIfNecessary(root, name, annotations);
+	}
+	
 	public static Folder createFolderIfNecessary(final Folder parent, final String name) throws MessagingException {
+		return createFolderIfNecessary(parent, name, null);
+	}
+	
+	public static Folder createFolderIfNecessary(final Folder parent, final String name, final Set<String> metadata) throws MessagingException {
 		Check.notNull(parent, "parent");
 		Check.notEmpty(name, "name");
+		
+		LOGGER.debug("Checking folder '{}'...", name);
+		final boolean supportsMetadata = ((IMAPStore)parent.getStore()).hasCapability("METADATA");
 		Folder folder = parent.getFolder(name);
 		if (!folder.exists()) {
+			LOGGER.debug("Folder '{}' NOT exists, creating...", name);
 			folder.create(Folder.HOLDS_MESSAGES | Folder.HOLDS_FOLDERS);
+			
+			if (metadata != null) {
+				if (supportsMetadata) {
+					SonicleIMAPFolder sfolder = (SonicleIMAPFolder)folder;
+					LOGGER.debug("Setting metadata({}) to folder '{}'...", metadata.size(), name);
+					for (String meta : metadata) {
+						String left = StringUtils.substringBefore(meta, ":");
+						String value = StringUtils.substringAfterLast(meta, ":");
+						boolean shared = false;
+						String key = null;
+						if (StringUtils.startsWith(key, "/shared/")) {
+							key = StringUtils.removeStart(left, "/shared");
+						} else {
+							key = StringUtils.removeStart(left, "/private");
+						}
+						LOGGER.trace("Metadata ({}) => {} : {}", shared ? "shared" : "private", key, value);
+						sfolder.setMetadata(shared, key, value);
+					}
+					
+				} else {
+					LOGGER.debug("Skipping metadata({}), NOT supported!", metadata.size(), name);
+				}
+			}
 		}
 		return folder;
 	}

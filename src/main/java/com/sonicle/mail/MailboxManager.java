@@ -38,13 +38,16 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.Store;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import net.sf.qualitycheck.Check;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * @deprecated delete it
  * @author malbinola
  */
 public class MailboxManager {

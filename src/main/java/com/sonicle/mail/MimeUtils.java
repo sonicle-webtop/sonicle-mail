@@ -70,6 +70,10 @@ import org.apache.commons.lang3.StringUtils;
 public class MimeUtils {
 	private static final boolean encodeFileNameProp = PropUtil.getBooleanSystemProperty("mail.mime.encodefilename", false);
 	private static final boolean decodeTextStrictProp = PropUtil.getBooleanSystemProperty("mail.mime.decodetext.strict", true);
+	public static final String HEADER_FROM = "From";
+	public static final String HEADER_TO = "To";
+	public static final String HEADER_SUBJECT = "Subject";
+	public static final String HEADER_RECEIVED = "Received";
 	public static final String HEADER_MESSAGE_ID = "Message-ID";
 	public static final String HEADER_CONTENT_LOCATION = "Content-Location";
 	public static final String HEADER_CONTENT_ID = "Content-ID";

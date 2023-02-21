@@ -8,6 +8,7 @@ package com.sonicle.mail.imap;
 import com.sonicle.mail.imap.commands.GetAnnotation;
 import com.sonicle.mail.imap.commands.GetThread;
 import com.sonicle.mail.imap.commands.SetAnnotation;
+import com.sonicle.mail.imap.commands.SetMetadata;
 import com.sun.mail.iap.*;
 import com.sun.mail.imap.*;
 import com.sun.mail.imap.protocol.*;
@@ -81,6 +82,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
 		doCommand(new SetAnnotation(this.fullName, key, shared,value));
 	}
 	
+	public void setMetadata(boolean shared, String key, String value) throws MessagingException {
+		doCommand(new SetMetadata(this.fullName, shared, key, value));
+	}
 	
 	
 	/**

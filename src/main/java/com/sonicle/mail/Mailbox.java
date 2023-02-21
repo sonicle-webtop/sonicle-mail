@@ -57,6 +57,7 @@ import jakarta.mail.event.ConnectionListener;
  */
 public class Mailbox {
 	private static final Logger LOGGER = (Logger)LoggerFactory.getLogger(Mailbox.class);
+	public static final String DEFAULT_INBOX_FOLDERNAME = "INBOX";
 	protected final StoreHostParams hostParams;
 	protected final MailboxConfig config;
 	protected final Session session;
@@ -352,10 +353,10 @@ public class Mailbox {
 	}
 	
 	private String doGetInboxFolderFullName() throws MessagingException {
-		String name = "INBOX";
+		String name = DEFAULT_INBOX_FOLDERNAME;
 		if (config.hasAlternativeRootFolder()) {
 			name = doGetRootFolder().getFullName();
-			if (storeOptions.has(StoreOption.EXPLICIT_INBOX)) name += folderSeparator + "INBOX";
+			if (storeOptions.has(StoreOption.EXPLICIT_INBOX)) name += folderSeparator + DEFAULT_INBOX_FOLDERNAME;
 		}
 		return name;
 	}
