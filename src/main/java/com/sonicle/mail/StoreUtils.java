@@ -112,9 +112,11 @@ public class StoreUtils {
 		}
 		if (username != null && params.getPassword() != null) {
 			props.setProperty(proto.getPropertyName("authenticate"), "true");
+			LOGGER.debug("Creating {} session to {}:{} using {}/{}", proto.name(), params.getHost(), params.getPort(), username, StringUtils.left(params.getPassword(), 3) + "***");
 			return Session.getInstance(props, new PasswordAuthenticator(username, params.getPassword()));
 			
 		} else {
+			LOGGER.debug("Creating {} session to {}:{}", proto.name(), params.getHost(), params.getPort());
 			return Session.getInstance(props);
 		}
 	}
