@@ -157,6 +157,25 @@ public class StoreUtils {
 		}
 	}
 	
+	public static boolean existsMailbox(final Session session, final StoreProtocol protocol, final String folderPrefix, final String user) throws MessagingException {
+		Check.notNull(session, "session");
+		Check.notNull(protocol, "protocol");
+		Check.notEmpty(user, "user");
+		
+		Store store = null;
+		try {
+			LOGGER.debug("Opening '{}' mailbox...", user);
+			store = open(session, protocol);
+			final char sep = store.getDefaultFolder().getSeparator();
+			final String rootFolderName = rootFolderName(user, folderPrefix, sep);
+			LOGGER.debug("Getting folder '{}'...", rootFolderName);
+			Folder rootFolder = store.getFolder(rootFolderName);
+			return rootFolder.exists();
+		} finally {
+			closeQuietly(store);
+		}
+	}
+	
 	private static String rootFolderName(final String user, final String folderPrefix, final char separator) {
 		if (!StringUtils.isBlank(folderPrefix)) {
 			return folderPrefix + separator + user;
