@@ -167,6 +167,12 @@ public class MimeUtils {
 		return MimeUtility.encodeText(text, StandardCharsets.UTF_8.name(), "B");
 	}
 	
+	public static InternetAddress getFromAddress(final MimeMessage mimeMessage) throws MessagingException {
+		Check.notNull(mimeMessage, "mimeMessage");
+		final Address[] addresses = mimeMessage.getFrom();
+		return (addresses == null || addresses.length == 0) ? null : (InternetAddress)addresses[0];
+	}
+	
 	/**
 	 * 
 	 * @param mimeMessage
