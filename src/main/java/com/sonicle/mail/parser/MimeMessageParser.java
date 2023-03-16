@@ -277,8 +277,8 @@ public class MimeMessageParser {
 	
 	private static void evaluateCidPart(final Part part, final ParsedMimeMessageComponents parsed, final int depth) {
 		// Look for a possible CID
-		String filename = parseFileName(part, false);
-		if (filename == null) parseContentID(part);
+		String cid = parseContentID(part);
+		String filename = (cid != null) ? cid : parseFileName(part, false);		
 		if (filename != null) {
 			if (!parsed.hasCidPart(filename)) parsed.appendCidPart(filename, part, depth);
 		}
