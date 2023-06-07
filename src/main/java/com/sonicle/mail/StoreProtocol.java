@@ -57,6 +57,11 @@ public enum StoreProtocol {
 		}
 		
 		@Override
+		public int getDefaultPort() {
+			return 143;
+		}
+		
+		@Override
 		public String getPropertyName(String remaining) {
 			return "mail." + getProtocol() + "." + remaining;
 		}
@@ -78,6 +83,11 @@ public enum StoreProtocol {
 		}
 		
 		@Override
+		public int getDefaultPort() {
+			return 993;
+		}
+		
+		@Override
 		public String getPropertyName(String remaining) {
 			return "mail." + getProtocol() + "." + remaining;
 		}
@@ -93,6 +103,11 @@ public enum StoreProtocol {
 		@Override
 		public String getProtocol() {
 			return "imap";
+		}
+		
+		@Override
+		public int getDefaultPort() {
+			return 143;
 		}
 		
 		@Override
@@ -113,6 +128,11 @@ public enum StoreProtocol {
 		@Override
 		public String getProtocol() {
 			return "pop3";
+		}
+		
+		@Override
+		public int getDefaultPort() {
+			return 110;
 		}
 		
 		@Override
@@ -137,6 +157,11 @@ public enum StoreProtocol {
 		}
 		
 		@Override
+		public int getDefaultPort() {
+			return 995;
+		}
+		
+		@Override
 		public String getPropertyName(String remaining) {
 			return "mail." + getProtocol() + "." + remaining;
 		}
@@ -155,6 +180,11 @@ public enum StoreProtocol {
 		}
 		
 		@Override
+		public int getDefaultPort() {
+			return 110;
+		}
+		
+		@Override
 		public String getPropertyName(String remaining) {
 			return "mail." + getProtocol() + "." + remaining;
 		}
@@ -169,6 +199,7 @@ public enum StoreProtocol {
 	};
 	
 	public abstract String getProtocol();
+	public abstract int getDefaultPort();
 	public abstract String getPropertyName(String remaining);
 	public abstract void applyProperties(Properties props);
 	
@@ -204,6 +235,12 @@ public enum StoreProtocol {
 			value = StringUtils.join(hosts, " ");
 		}
 		props.put(getPropertyName("ssl.trust"), value);
+	}
+	
+	public static StoreProtocol parse(final String protocol) {
+		String upper = StringUtils.upperCase(protocol);
+		if ("STARTTLS".equals(upper)) return StoreProtocol.IMAP_STARTTLS;
+		return EnumUtils.forName(upper, StoreProtocol.class);
 	}
 	
 	public static StoreProtocol parse(String protocol, boolean starttls) {

@@ -33,14 +33,22 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.mail.email.EmailMessage;
+import com.sonicle.mail.email.Recipient;
+import com.sonicle.mail.producer.MimeMessageProducer;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Properties;
 import net.sf.qualitycheck.Check;
+import org.apache.commons.io.output.QueueOutputStream;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -99,5 +107,69 @@ public class TransportUtils {
 	
 	public static void close(final Transport transport) throws MessagingException {
 		if (transport != null && transport.isConnected()) transport.close();
+	}
+	
+	public static String extractSendingAddress(final Object message) {
+		String sendingAddress = null;
+		if (message instanceof MimeMessage) {
+			InternetAddress ia = null;
+			try {
+				ia = MimeUtils.getFromAddress((MimeMessage)message);
+			} catch (MessagingException ex) { /* Do nothing... */ }
+			if (ia != null) sendingAddress = ia.getAddress();
+			
+		} else if (message instanceof EmailMessage) {
+			Recipient rcpt = ((EmailMessage)message).getFromRecipient();
+			if (rcpt != null) sendingAddress = rcpt.getAddress();
+		} else {
+			throw new IllegalArgumentException("Unsupported message Type: only 'jakarta.mail.internet.MimeMessage' and 'com.sonicle.mail.email.EmailMessage' objects are supported.");
+		}
+		return sendingAddress;
+	}
+	
+	public static Session prepareTransportSession(final TransportHostParams transportParams, final String sendingAddress, final Properties copyOfPoperties) throws Exception {
+		try {
+			// Avoid slowness of call to message.saveChanges() due to DNS lookups
+			// https://stackoverflow.com/questions/44435457/mimemessage-savechanges-is-really-slow
+			// https://javaee.github.io/javamail/docs/api/
+			// https://javaee.github.io/javamail/FAQ#commonmistakes
+			if (!StringUtils.isBlank(sendingAddress)) copyOfPoperties.setProperty("mail.from", sendingAddress);
+			return TransportUtils.createSession(transportParams, copyOfPoperties);
+			
+		} catch (GeneralSecurityException ex) {
+			throw new Exception("Unable to create Transport session", ex);
+		}
+	}
+	
+	public static MimeMessage prepareMimeMessage(final Object message, final Session transportSession) throws Exception {
+		MimeMessage mimeMessage = null;
+		if (message instanceof MimeMessage) {
+			try {
+				QueueOutputStream os = new QueueOutputStream();
+				try (InputStream is = os.newQueueInputStream()) {
+					mimeMessage = new MimeMessage(transportSession, is) {
+						@Override
+						protected void updateMessageID() throws MessagingException {
+							if (getHeader(MimeUtils.HEADER_MESSAGE_ID) == null) {
+								super.updateMessageID();
+							}
+						}
+					};
+					mimeMessage.saveChanges();
+				}
+			} catch (IOException | MessagingException ex) {
+				throw new Exception("Unable to create mimeMessage", ex);
+			}
+			
+		} else if (message instanceof EmailMessage) {
+			try {
+				mimeMessage = MimeMessageProducer.produceMimeMessage((EmailMessage)message, transportSession);
+				mimeMessage.saveChanges();
+
+			} catch (UnsupportedEncodingException | MessagingException ex) {
+				throw new Exception("Unable to create mimeMessage", ex);
+			}
+		}
+		return mimeMessage;
 	}
 }

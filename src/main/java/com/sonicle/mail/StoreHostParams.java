@@ -34,6 +34,8 @@
 package com.sonicle.mail;
 
 import net.sf.qualitycheck.Check;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 /**
  *
@@ -144,5 +146,36 @@ public class StoreHostParams {
 	public StoreHostParams withVMAILImpersonate(String vmailPassword) {
 		withPassword(Check.notEmpty(vmailPassword, "vmailPassword"));
 		return withImpersonateMode(ImpersonateMode.VMAIL);
+	}
+	
+	@Override
+	public int hashCode() {
+		return new HashCodeBuilder()
+			.append(host)
+			.append(port)
+			.append(protocol)
+			.append(username)
+			.append(password)
+			.append(trustHost)
+			.append(impersonateMode)
+			.append(adminUsername)
+			.toHashCode();
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == this) return true;
+		if (!(obj instanceof StoreHostParams)) return false;
+		final StoreHostParams otherObj = (StoreHostParams)obj;
+		return new EqualsBuilder()
+			.append(host, otherObj.host)
+			.append(port, otherObj.port)
+			.append(protocol, otherObj.protocol)
+			.append(username, otherObj.username)
+			.append(password, otherObj.password)
+			.append(trustHost, otherObj.trustHost)
+			.append(impersonateMode, otherObj.impersonateMode)
+			.append(adminUsername, otherObj.adminUsername)
+			.isEquals();
 	}
 }

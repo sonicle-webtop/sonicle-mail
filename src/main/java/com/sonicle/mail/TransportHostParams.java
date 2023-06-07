@@ -61,6 +61,15 @@ public class TransportHostParams {
 		this.password = password;
 	}
 	
+	public TransportHostParams(TransportHostParams params) {
+		this.host = params.host;
+		this.port = params.port;
+		this.protocol = params.protocol;
+		this.username = params.username;
+		this.password = params.password;
+		this.trustHost = params.trustHost;
+	}
+	
 	public String getHost() {
 		return host;
 	}

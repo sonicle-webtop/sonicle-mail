@@ -51,14 +51,22 @@ public class PropsBuilder {
 		this.props = new Properties(defaults);
 	}
 	
+	public PropsBuilder debug(boolean debug) {
+		props.setProperty("mail.debug", String.valueOf(debug));
+		return this;
+	}
+	
 	public PropsBuilder withDebug() {
-		props.setProperty("mail.debug", "true");
+		return debug(true);
+	}
+	
+	public PropsBuilder socketDebug(boolean socketDebug) {
+		props.setProperty("mail.socket.debug", String.valueOf(socketDebug));
 		return this;
 	}
 	
 	public PropsBuilder withSocketDebug() {
-		props.setProperty("mail.socket.debug", "true");
-		return this;
+		return socketDebug(true);
 	}
 	
 	public PropsBuilder withParseDebug() {

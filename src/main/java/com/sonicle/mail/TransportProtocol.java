@@ -51,6 +51,11 @@ public enum TransportProtocol {
 		public String getProtocol() {
 			return "smtp";
 		}
+
+		@Override
+		public int getDefaultPort() {
+			return 25;
+		}
 		
 		@Override
 		public String getPropertyName(String remaining) {
@@ -74,6 +79,11 @@ public enum TransportProtocol {
 		}
 		
 		@Override
+		public int getDefaultPort() {
+			return 465;
+		}
+		
+		@Override
 		public String getPropertyName(String remaining) {
 			return "mail." + getProtocol() + "." + remaining;
 		}
@@ -93,6 +103,11 @@ public enum TransportProtocol {
 		}
 		
 		@Override
+		public int getDefaultPort() {
+			return 587;
+		}
+		
+		@Override
 		public String getPropertyName(String remaining) {
 			return "mail." + getProtocol() + "." + remaining;
 		}
@@ -107,6 +122,7 @@ public enum TransportProtocol {
 	};
 	
 	public abstract String getProtocol();
+	public abstract int getDefaultPort();
 	public abstract String getPropertyName(String remaining);
 	public abstract void applyProperties(Properties props);
 	
@@ -126,6 +142,12 @@ public enum TransportProtocol {
 			value = StringUtils.join(hosts, " ");
 		}
 		props.put(getPropertyName("ssl.trust"), value);
+	}
+	
+	public static TransportProtocol parse(final String protocol) {
+		String upper = StringUtils.upperCase(protocol);
+		if ("STARTTLS".equals(upper)) return TransportProtocol.SMTP_STARTTLS;
+		return EnumUtils.forName(upper, TransportProtocol.class);
 	}
 	
 	public static TransportProtocol parse(String protocol, boolean starttls) {
