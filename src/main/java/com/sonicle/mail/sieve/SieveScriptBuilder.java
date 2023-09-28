@@ -61,6 +61,7 @@ public class SieveScriptBuilder {
 	private final HashSet<String> requires = new HashSet<>();
 	private String spamFolder = null;
 	private SieveVacation vacation = null;
+	private final ArrayList<Filter> prioritizedFilters = new ArrayList<>();
 	private final ArrayList<Filter> filters = new ArrayList<>();
 	
 	public SieveScriptBuilder() {}
@@ -73,6 +74,10 @@ public class SieveScriptBuilder {
 		this.vacation = vacation;
 	}
 	
+	public void addPrioritizedFilter(String name, SieveMatch match, ArrayList<SieveRule> rules, ArrayList<SieveAction> actions) {
+		prioritizedFilters.add(new Filter(name, match, rules, actions));
+	}
+	
 	public void addFilter(String name, SieveMatch match, ArrayList<SieveRule> rules, ArrayList<SieveAction> actions) {
 		filters.add(new Filter(name, match, rules, actions));
 	}
@@ -80,6 +85,9 @@ public class SieveScriptBuilder {
 	public String build() {
 		StringBuilder sb = new StringBuilder();
 		
+		for (Filter filter : prioritizedFilters) {
+			if (!filter.isEmpty()) sb.append(rule(filter));
+		}
 		if (!StringUtils.isBlank(spamFolder)) {
 			sb.append(spamFilter(spamFolder));
 		}
