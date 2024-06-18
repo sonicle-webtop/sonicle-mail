@@ -10,6 +10,8 @@ import com.sun.mail.imap.protocol.Item;
 import java.util.Date;
 import java.util.Map;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MailDateFormat;
+import java.text.ParseException;
 
 /**
  *
@@ -29,6 +31,8 @@ public class SonicleIMAPMessage extends IMAPMessage {
 	private int threadChildren=0;
 	
 	private int peekCount=0;
+	
+	private static final MailDateFormat mailDateFormat = new MailDateFormat();
 	
 	public SonicleIMAPMessage(SonicleIMAPFolder folder, int msgnum) {
 		super(folder,msgnum);
@@ -109,6 +113,28 @@ public class SonicleIMAPMessage extends IMAPMessage {
 		if (d==null) d=getReceivedDate();
 		if (d==null) d=new java.util.Date(0);
 		return d;
+	}	
+	
+	/**
+	 * Returns the value of the RFC 5322 "Resent-Date" field.
+	 * It indicates the date and time at which the resent message is dispatched 
+	 * by the resender of the message. Like the "Date:" field, it is not the 
+	 * date and time that the message was actually transported.
+	 * @return The Resent-Date
+	 * @throws MessagingException 
+	 */
+	public Date getResentDate() throws MessagingException {
+		String s = getHeader("Resent-Date", null);
+		if (s != null) {
+			try {
+				synchronized (mailDateFormat) {
+					return mailDateFormat.parse(s);
+				}
+			} catch (ParseException pex) {
+				return null;
+			}
+		}
+		return null;
 	}
 	
 	@Override
