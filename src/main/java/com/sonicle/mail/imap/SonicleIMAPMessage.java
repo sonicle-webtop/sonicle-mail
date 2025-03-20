@@ -6,11 +6,14 @@
 package com.sonicle.mail.imap;
 
 import com.sun.mail.imap.IMAPMessage;
+import com.sun.mail.imap.protocol.BODYSTRUCTURE;
 import com.sun.mail.imap.protocol.Item;
 import java.util.Date;
 import java.util.Map;
 import jakarta.mail.MessagingException;
+import jakarta.mail.Part;
 import jakarta.mail.internet.MailDateFormat;
+import java.io.IOException;
 import java.text.ParseException;
 
 /**
@@ -167,6 +170,77 @@ public class SonicleIMAPMessage extends IMAPMessage {
 		if (peekCount<0) peekCount=0;
 	}
     
-    
+	public BODYSTRUCTURE getBodyStructure() {
+		return bs;
+	}
+
+    public boolean hasAttachments() throws MessagingException, IOException {
+		return hasAttachments(null);
+	}
+	
+    public boolean hasAttachments(String lowerCaseNamePattern) throws MessagingException, IOException {
+		return hasAttachments(bs, lowerCaseNamePattern);
+	}
+	
+    private boolean hasAttachments(BODYSTRUCTURE bs, String lowerCaseNamePattern) throws MessagingException, IOException {
+        boolean retval=false;
+        
+		if (isAttachment(bs)) {
+			if (lowerCaseNamePattern!=null) {
+				String filename = bs.cParams.get("name");
+				if (filename==null) filename = bs.dParams.get("filename");
+				if (filename!=null && filename.toLowerCase().contains(lowerCaseNamePattern))
+					retval=true;
+			}
+			else retval=true;
+		}
+        else if(bs.bodies!=null && bs.bodies.length>0) {
+            for(int i=0;i<bs.bodies.length;++i) {
+                if (hasAttachments(bs.bodies[i], lowerCaseNamePattern)) {
+                    retval=true;
+                    break;
+                }
+            }
+        }
+        
+        return retval;
+    }
+
+	private boolean isAttachment(BODYSTRUCTURE bs) {
+		return bs.disposition!=null && bs.disposition.equals("ATTACHMENT");
+	}
+	
+	// strict : check also request method
+    public boolean hasInvitation(boolean strict) throws MessagingException, IOException {
+		return hasInvitation(bs, strict);
+	}
+	
+    private boolean hasInvitation(BODYSTRUCTURE bs, boolean strict) throws MessagingException, IOException {
+        boolean retval=false;
+        
+		if (isInvitation(bs, strict)) {
+			retval=true;
+		}
+        else if(bs.bodies!=null && bs.bodies.length>0) {
+            for(int i=0;i<bs.bodies.length;++i) {
+                if (hasInvitation(bs.bodies[i], strict)) {
+                    retval=true;
+                    break;
+                }
+            }
+        }
+        
+        return retval;
+    }
+
+	protected boolean isInvitation(BODYSTRUCTURE bs, boolean strict) throws MessagingException {
+		boolean retval =  false;
+		boolean isTextCalendar = bs.type!=null && bs.type.equals("TEXT") && bs.subtype!=null && bs.subtype.equals("CALENDAR");
+		if (isTextCalendar && strict) {
+			String method = bs.cParams.get("method");
+			if (method != null && method.equals("REQUEST")) retval = true;
+		}
+		return retval;
+	}    
 	
 }
