@@ -207,7 +207,7 @@ public class SonicleIMAPMessage extends IMAPMessage {
     }
 
 	private boolean isAttachment(BODYSTRUCTURE bs) {
-		return bs.disposition!=null && bs.disposition.equals("ATTACHMENT");
+		return bs.disposition!=null && bs.disposition.equalsIgnoreCase("ATTACHMENT");
 	}
 	
 	// strict : check also request method
