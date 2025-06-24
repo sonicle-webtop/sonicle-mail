@@ -35,8 +35,14 @@ package com.sonicle.mail.cyrus;
 
 import com.sonicle.commons.InternetAddressUtils;
 import com.sonicle.commons.LangUtils;
+import com.sonicle.mail.PropsBuilder;
+import com.sonicle.mail.StoreHostParams;
+import com.sonicle.mail.StoreProtocol;
+import com.sonicle.mail.StoreUtils;
+import com.sonicle.mail.imap.SonicleIMAPFolder;
 import com.sun.mail.imap.ACL;
 import com.sun.mail.imap.IMAPFolder;
+import com.sun.mail.imap.IMAPStore;
 import com.sun.mail.imap.Rights;
 import java.util.Properties;
 import jakarta.mail.Folder;
@@ -119,4 +125,79 @@ public class CyrusManager {
 	private void closeQuietly(Store store) {
 		if (store != null) try { store.close(); } catch (MessagingException ex) { /* Do nothing... */ }
 	}
+	
+	/*
+	public static boolean isSharedSeen(final Folder folder) throws MessagingException {
+		final IMAPStore store = (IMAPStore)folder.getStore();
+		if (store.hasCapability("ANNOTATEMORE")) {
+			
+		} else if (store.hasCapability("ANNOTATEMORE")) {
+			
+		}
+		
+		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
+		String value = imfolder.getMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen");
+		return "true".equalsIgnoreCase(value);
+	}
+	*/
+	
+	public static void setSharedSeen(final Folder folder) throws MessagingException {
+		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
+		imfolder.setMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen", "true");
+	}
+	
+	public static void unsetSharedSeen(final Folder folder) throws MessagingException {
+		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
+		imfolder.setMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen", null);
+	}
+	
+	//public static void main(String[] args) throws Exception {
+        /*
+		StoreHostParams shp = new StoreHostParams("xxx.xxx.xxx.xxx", 143, StoreProtocol.IMAP)
+			.withUsername("uuu")
+			.withSASLImpersonate("aaa", "ppp");
+		Session session = StoreUtils.createSession(shp, 1, new PropsBuilder(System.getProperties()).withSonicleIMAPFolder().build());
+		Store store = StoreUtils.open(session, StoreProtocol.IMAP);
+		Folder folder = StoreUtils.getFolder(store, "ciao", false);
+		
+		//Folder xxx = StoreUtils.getFolder(inbox, "ciao", false);
+		
+		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
+		//String value = imfolder.getMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen");
+		//imfolder.setMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen", null);
+		
+		imfolder.setMetadata(false, "/specialuse", null);
+		
+		StoreUtils.closeQuietly(store);
+		*/
+		
+		
+		/*
+        Session session = Session.getInstance(System.getProperties());
+        Store store = session.getStore("imap");
+        store.connect("192.168.1.199", "mio_utente", "mia_password");
+
+        // Apriamo la cartella INBOX in sola lettura
+        IMAPFolder folder = (IMAPFolder) store.getFolder("INBOX");
+        folder.open(Folder.READ_ONLY);
+
+        // Definiamo quali "entry" di metadati vogliamo recuperare
+        // Ad esempio /private/comment e /shared/comment
+        String[] metadataEntries = {"/private/comment", "/shared/comment"};
+
+        // Richiamiamo doCommand, passandogli la nostra implementazione ProtocolCommand
+        Map<String, String> metadata = (Map<String, String>) folder.doCommand(
+                new GetMetadataCommand("INBOX", metadataEntries)
+        );
+
+        // Stampa i risultati
+        System.out.println("METADATA recuperati:");
+        for (Map.Entry<String, String> entry : metadata.entrySet()) {
+            System.out.println("Chiave: " + entry.getKey() + " => Valore: " + entry.getValue());
+        }
+
+        folder.close(false);
+        store.close();
+		*/
+    //}
 }

@@ -179,7 +179,7 @@ public class SonicleIMAPMessage extends IMAPMessage {
 	}
 	
     public boolean hasAttachments(String lowerCaseNamePattern) throws MessagingException, IOException {
-		return hasAttachments(bs, lowerCaseNamePattern);
+		return bs!=null && hasAttachments(getBodyStructure(), lowerCaseNamePattern);
 	}
 	
     private boolean hasAttachments(BODYSTRUCTURE bs, String lowerCaseNamePattern) throws MessagingException, IOException {
@@ -187,8 +187,8 @@ public class SonicleIMAPMessage extends IMAPMessage {
         
 		if (isAttachment(bs)) {
 			if (lowerCaseNamePattern!=null) {
-				String filename = bs.cParams.get("name");
-				if (filename==null) filename = bs.dParams.get("filename");
+				String filename = bs.cParams!=null ? bs.cParams.get("name") : null;
+				if (filename==null) filename = bs.dParams!=null ? bs.dParams.get("filename") : null;
 				if (filename!=null && filename.toLowerCase().contains(lowerCaseNamePattern))
 					retval=true;
 			}
@@ -207,7 +207,7 @@ public class SonicleIMAPMessage extends IMAPMessage {
     }
 
 	private boolean isAttachment(BODYSTRUCTURE bs) {
-		return bs.disposition!=null && bs.disposition.equals("ATTACHMENT");
+		return bs.disposition!=null && bs.disposition.equalsIgnoreCase("ATTACHMENT");
 	}
 	
 	// strict : check also request method
