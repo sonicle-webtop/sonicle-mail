@@ -34,14 +34,13 @@
 package com.sonicle.mail.sieve;
 
 import com.sonicle.commons.EnumUtils;
-import com.sonicle.commons.time.DateTimeUtils;
+import com.sonicle.commons.time.JodaTimeUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
 
 /**
  *
@@ -146,8 +145,7 @@ public class SieveScriptBuilder {
 		requires.add(REQUIRE_VACATION);
 		
 		if (vacation.hasAutoActivation()) {
-			DateTimeFormatter isoFmt = ISODateTimeFormat.dateTimeNoMillis();
-			DateTimeFormatter offsetFmt = DateTimeUtils.createFormatter("Z");
+			DateTimeFormatter offsetFmt = JodaTimeUtils.createFormatter("Z");
 			
 			requires.add(REQUIRE_DATE);
 			requires.add(REQUIRE_RELATIONAL);
@@ -163,7 +161,7 @@ public class SieveScriptBuilder {
 				sb.append("\"");
 				sb.append(" :value \"ge\" \"iso8601\" ");
 				sb.append("\"");
-				sb.append(printValue(isoFmt.print(dt)));
+				sb.append(printValue(JodaTimeUtils.ISO_DATETIME_FMT.print(dt)));
 				sb.append("\"");
 				count++;
 			}
@@ -176,7 +174,7 @@ public class SieveScriptBuilder {
 				sb.append("\"");
 				sb.append(" :value \"lt\" \"iso8601\" ");
 				sb.append("\"");
-				sb.append(printValue(isoFmt.print(dt)));
+				sb.append(printValue(JodaTimeUtils.ISO_DATETIME_FMT.print(dt)));
 				sb.append("\"");
 				//count++;
 			}
