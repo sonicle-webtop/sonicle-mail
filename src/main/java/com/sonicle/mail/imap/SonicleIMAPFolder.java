@@ -23,6 +23,7 @@ import java.util.Vector;
 import jakarta.mail.*;
 import jakarta.mail.internet.MimeUtility;
 import jakarta.mail.search.*;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -331,7 +332,26 @@ public class SonicleIMAPFolder extends IMAPFolder {
 			Message[] matchMsgs = null;
 
 			synchronized(messageCacheLock) {
-				int[] matches = _sort(sort,term);
+				int[] matches = null;
+				//As IMAP does not support seen state sorting,
+				//if first sort term is Seen state, run two specific queries
+				if (sort instanceof SeenSortTerm) {
+					//remove status sort term, sort by next elements
+					SonicleSortTerm ssort = sort.next();
+					//create a search term by adding search "unseen" first
+					FlagTerm fterm = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
+					SearchTerm sterm = term!=null ? new AndTerm(fterm, term) : fterm;
+					int[] unseen = _sort(ssort,sterm);
+					//create a search term by adding search "seen" first
+					fterm = new FlagTerm(new Flags(Flags.Flag.SEEN), true);
+					sterm = term!=null ? new AndTerm(fterm, term) : fterm;
+					int[] seen = _sort(ssort,sterm);
+					
+					//append in correct order
+					matches = sort.isReversed() ? ArrayUtils.addAll(seen, unseen) : ArrayUtils.addAll(unseen, seen);
+				} else {
+					matches = _sort(sort,term);
+				}
 				if (matches != null) {
 					matchMsgs = new IMAPMessage[matches.length];
 					// Map seq-numbers into actual Messages.
