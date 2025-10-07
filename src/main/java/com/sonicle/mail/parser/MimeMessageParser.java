@@ -102,7 +102,9 @@ public class MimeMessageParser {
 		} else if (isMimeType(currentPart, "text/calendar") || isMimeType(currentPart, "application/ics")) {
 			parsed.appendDisplayPart(currentPart, depth);
 			if (isMimeType(currentPart, "text/calendar") && !parsed.hasCalendar() && !Part.ATTACHMENT.equalsIgnoreCase(currentDisposition)) {
-				parsed.addCalendar(parseCalendarMethod(currentPart), parseCalendarContent(currentPart));
+				try {
+					parsed.addCalendar(parseCalendarMethod(currentPart), parseCalendarContent(currentPart));
+				} catch(MimeMessageParseException exc) { }
 			}
 			
 		} else if (isMimeType(currentPart, "message/rfc822")) {
@@ -158,7 +160,9 @@ public class MimeMessageParser {
 				} else if (isMimeType(mpPart, "text/calendar") || isMimeType(mpPart, "application/ics")) {// uguale a sopra
 					parsed.appendDisplayPart(mpPart, depth);
 					if (isMimeType(mpPart, "text/calendar") && !parsed.hasCalendar() && !Part.ATTACHMENT.equalsIgnoreCase(mpDisposition)) {
-						parsed.addCalendar(parseCalendarMethod(mpPart), parseCalendarContent(mpPart));
+						try {
+							parsed.addCalendar(parseCalendarMethod(mpPart), parseCalendarContent(mpPart));
+						} catch(MimeMessageParseException exc) { }
 					}
 					
 				} else if (isMimeType(mpPart, "message/rfc822")) {// rfc822 diverso !!!
@@ -209,7 +213,9 @@ public class MimeMessageParser {
 								}
 							}
 							if (isMimeType(altPart, "text/calendar") && !parsed.hasCalendar() && !Part.ATTACHMENT.equalsIgnoreCase(altDisposition)) {
-								parsed.addCalendar(parseCalendarMethod(altPart), parseCalendarContent(altPart));
+								try {
+									parsed.addCalendar(parseCalendarMethod(altPart), parseCalendarContent(altPart));
+								} catch(MimeMessageParseException exc) { }
 							}
 						}
 					}
@@ -253,7 +259,9 @@ public class MimeMessageParser {
 			} else if (isMimeType(altPart, "text/calendar")) {
 				// Usually calendar parts are defined into alternative set
 				if (/*isMimeType(bodyPart, "text/calendar") &&*/ !parsed.hasCalendar() && !Part.ATTACHMENT.equalsIgnoreCase(altDisposition)) {
-					parsed.addCalendar(parseCalendarMethod(altPart), parseCalendarContent(altPart));
+					try {
+						parsed.addCalendar(parseCalendarMethod(altPart), parseCalendarContent(altPart));
+					} catch(MimeMessageParseException exc) { }
 				}
 				
 				// This replicate logic inside orignal addAttachmentPart 
