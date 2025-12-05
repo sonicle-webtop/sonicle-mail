@@ -1267,7 +1267,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 	SonicleIMAPMessage msg;
 	for (int i = 0; i < msgs.length; i++) {
 	    msg = (SonicleIMAPMessage)msgs[i];
-	    if (msg.isExpunged()) // expunged message, skip it
+	    if (msg==null || msg.isExpunged()) // expunged message, skip it
 		continue;
 
 	    //current = msg.getUID();
