@@ -33,8 +33,11 @@
  */
 package com.sonicle.mail.cyrus;
 
+import com.sonicle.commons.EnumUtils;
 import com.sonicle.commons.InternetAddressUtils;
 import com.sonicle.commons.LangUtils;
+import com.sonicle.mail.Mailbox;
+import com.sonicle.mail.MailboxConfig;
 import com.sonicle.mail.PropsBuilder;
 import com.sonicle.mail.StoreHostParams;
 import com.sonicle.mail.StoreProtocol;
@@ -50,6 +53,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.NoSuchProviderException;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
+import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +93,7 @@ public class CyrusManager {
 			store.connect(host, port, adminUser, adminPassword);
 			addUserFolder(store, StringUtils.lowerCase(user));
 		} finally {
-			closeQuietly(store);
+			StoreUtils.closeQuietly(store);
 		}
 	}
 	
@@ -122,36 +126,88 @@ public class CyrusManager {
 		}
 	}
 	
-	private void closeQuietly(Store store) {
-		if (store != null) try { store.close(); } catch (MessagingException ex) { /* Do nothing... */ }
+	public static final String CYRUS_KEY_SHAREDSEEN = "/vendor/cmu/cyrus-imapd/sharedseen";
+	
+	public static enum SharedSeenMethod {
+		ANNOTATION, METADATA
 	}
 	
-	/*
-	public static boolean isSharedSeen(final Folder folder) throws MessagingException {
-		final IMAPStore store = (IMAPStore)folder.getStore();
-		if (store.hasCapability("ANNOTATEMORE")) {
-			
-		} else if (store.hasCapability("ANNOTATEMORE")) {
-			
-		}
+	public static SharedSeenMethod guessSharedSeenMethod(final IMAPStore store) throws MessagingException {
+		Check.notNull(store, "store");
 		
-		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
-		String value = imfolder.getMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen");
-		return "true".equalsIgnoreCase(value);
+		/**
+		 * Historically, shared-seen key was set via annotation but starting
+		 * from recent versions of CyrusIMAP, annotation method is replaced by 
+		 * metadata way.
+		 * So, check capabilities before using this method in order to determine 
+		 * which method is appropriate: if ANNOTATEMORE is declared, give 
+		 * precedence to annotation-method, while METADATA is there use 
+		 * medatada-method instead.
+		 * Please note that older CyrusIMAP servers have both METADATA 
+		 * and ANNOTATEMORE capabilities on, so make sure to check ANNOTATEMORE 
+		 * before METADATA.
+		 */
+		
+		if (store.hasCapability("ANNOTATEMORE")) {
+			return SharedSeenMethod.ANNOTATION;
+		} else if (store.hasCapability("METADATA")) {
+			return SharedSeenMethod.METADATA;
+		} else {
+			return null;
+		}
 	}
-	*/
 	
-	public static void setSharedSeen(final Folder folder) throws MessagingException {
-		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
-		imfolder.setMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen", "true");
+	public static Boolean isSharedSeen(final SharedSeenMethod method, final Folder folder) throws MessagingException {
+		Check.notNull(method, "method");
+		Check.notNull(folder, "folder");
+		
+		final SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
+		if (SharedSeenMethod.ANNOTATION.equals(method)) {
+			return "true".equalsIgnoreCase(imfolder.getAnnotation(CYRUS_KEY_SHAREDSEEN, true));
+		} else if (SharedSeenMethod.METADATA.equals(method)) {
+			return "true".equalsIgnoreCase(imfolder.getMetadata(true, CYRUS_KEY_SHAREDSEEN));
+		}
+		return null;
 	}
 	
-	public static void unsetSharedSeen(final Folder folder) throws MessagingException {
-		SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
-		imfolder.setMetadata(true, "/vendor/cmu/cyrus-imapd/sharedseen", null);
+	public static void setSharedSeen(final SharedSeenMethod method, final Folder folder, final boolean value) throws MessagingException {
+		Check.notNull(method, "method");
+		Check.notNull(folder, "folder");
+		
+		final SonicleIMAPFolder imfolder = (SonicleIMAPFolder)folder;
+		if (SharedSeenMethod.ANNOTATION.equals(method)) {
+			logger.debug("Setting Annotation: " + CyrusManager.CYRUS_KEY_SHAREDSEEN + "' >> " + String.valueOf(value));
+			imfolder.setAnnotation(CYRUS_KEY_SHAREDSEEN, true, value ? "true" : null /*"false"*/);
+		} else if (SharedSeenMethod.METADATA.equals(method)) {
+			logger.debug("Setting Metadata: " + CyrusManager.CYRUS_KEY_SHAREDSEEN + "' >> " + String.valueOf(value));
+			imfolder.setMetadata(true, CYRUS_KEY_SHAREDSEEN, value ? "true" : null);
+		}	
 	}
 	
 	//public static void main(String[] args) throws Exception {
+		
+		/*
+		StoreHostParams shp = new StoreHostParams("xxx.xxx.xxx.xxx", 143, StoreProtocol.IMAP)
+			.withUsername("uuu")
+			.withSASLImpersonate("aaa", "ppp");
+		
+		MailboxConfig mc = new MailboxConfig.Builder()
+			.build();
+		
+		Properties props = new PropsBuilder(System.getProperties())
+			.withSonicleIMAPFolder()
+			.build();
+		
+		Mailbox mailbox = null;
+		try {
+			mailbox = new Mailbox(shp, mc, props);
+			mailbox.setSharedSeen(false);
+			
+		} finally {
+			if (mailbox != null) mailbox.disconnect();
+		}
+		*/
+	
         /*
 		StoreHostParams shp = new StoreHostParams("xxx.xxx.xxx.xxx", 143, StoreProtocol.IMAP)
 			.withUsername("uuu")

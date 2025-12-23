@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.EnumUtils;
 import com.sonicle.commons.flags.BitFlags;
 import com.sun.mail.imap.IMAPStore;
 import jakarta.mail.Folder;
@@ -49,7 +50,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.sf.qualitycheck.Check;
 import com.sonicle.commons.flags.BitFlagsEnum;
+import com.sonicle.mail.cyrus.CyrusManager;
+import static com.sonicle.mail.cyrus.CyrusManager.CYRUS_KEY_SHAREDSEEN;
 import jakarta.mail.event.ConnectionListener;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 /**
  *
@@ -64,7 +69,7 @@ public class Mailbox {
 	protected final StampedLock lock = new StampedLock();
 	protected Store store = null;
 	protected BitFlags<StoreOption> storeOptions = null;
-	protected String[] sharedPrefixes = null;
+	protected HashSet<String> sharedPrefixes = null;
 	protected char folderSeparator = Character.MIN_VALUE;
 	protected AtomicBoolean connecting = new AtomicBoolean(false);
 	protected AtomicBoolean disconnecting = new AtomicBoolean(false);
@@ -242,6 +247,21 @@ public class Mailbox {
 		}
 	}
 	
+	public void setSharedSeen(final boolean value) throws MessagingException {
+		long stamp = lock.readLock();
+		try {
+			if (doIsReady()) {
+				doSetSharedSeen(value);
+			} else {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
+				doSetSharedSeen(value);
+			}
+		} finally {
+			lock.unlock(stamp);
+		}
+	}
+	
 	public boolean hasOption(final StoreOption option) throws MessagingException {
 		Check.notNull(option, "option");
 		long stamp = lock.readLock();
@@ -304,13 +324,10 @@ public class Mailbox {
 			
 			// Discover shared prefixes
 			Folder uns[] = store.getUserNamespaces("");
-			String[] prefixes = new String[uns.length];
-			int i = 0;
+			sharedPrefixes = new LinkedHashSet<>(uns.length);
 			for (Folder folder : uns) {
-				prefixes[i] = folder.getFullName();
-				i++;
+				sharedPrefixes.add(folder.getFullName());
 			}
-			sharedPrefixes = prefixes;
 
 			// Discover folder separator
 			Folder rootFolder = doGetRootFolder();
@@ -337,6 +354,30 @@ public class Mailbox {
 			store.removeConnectionListener(connectionListener);
 		} else {
 			store.addConnectionListener(connectionListener);
+		}
+	}
+	
+	private void doSetSharedSeen(final boolean value) throws MessagingException {
+		if (doCheckStoreOption(StoreOption.IS_CYRUS)) {
+			Folder rootFolder = doGetRootFolder();
+			if (rootFolder == null || !rootFolder.exists()) throw new MessagingException("Root NOT found");
+
+			final CyrusManager.SharedSeenMethod method = CyrusManager.guessSharedSeenMethod((IMAPStore)store);
+			doCyrusSetSharedSeenRecursive(method, rootFolder, value);
+			
+		} else {
+			throw new MessagingException("SharedSeen is available only for CyrusIMAP");
+		}
+	}
+	
+	private void doCyrusSetSharedSeenRecursive(final CyrusManager.SharedSeenMethod method, final Folder parentFolder, final boolean value) throws MessagingException {
+		final Folder[] children = parentFolder.list();
+		if (children == null || children.length == 0) return;
+		
+		for (Folder child : children) {
+			if (sharedPrefixes.contains(child.getFullName())) continue;
+			CyrusManager.setSharedSeen(method, child, value);
+			doCyrusSetSharedSeenRecursive(method, child, value);
 		}
 	}
 	
