@@ -46,18 +46,34 @@ import net.sf.qualitycheck.Check;
  */
 public class Recipients {
 	
+	public static Builder to(InternetAddress internetAddress) {
+		return new Builder().to(internetAddress);
+	}
+	
+	public static Builder cc(InternetAddress internetAddress) {
+		return new Builder().cc(internetAddress);
+	}
+	
+	public static Builder bcc(InternetAddress internetAddress) {
+		return new Builder().bcc(internetAddress);
+	}
+	
+	public static Builder with(Recipient recipient) {
+		return new Builder().with(recipient);
+	}
+	
 	public static class Builder {
 		private List<Recipient> rcpts = new ArrayList<>();
 		
-		public Builder withTo(InternetAddress internetAddress) {
+		public Builder to(InternetAddress internetAddress) {
 			return with(new Recipient(internetAddress, Message.RecipientType.TO));
 		}
 		
-		public Builder withCc(InternetAddress internetAddress) {
+		public Builder cc(InternetAddress internetAddress) {
 			return with(new Recipient(internetAddress, Message.RecipientType.CC));
 		}
 		
-		public Builder withBcc(InternetAddress internetAddress) {
+		public Builder bcc(InternetAddress internetAddress) {
 			return with(new Recipient(internetAddress, Message.RecipientType.BCC));
 		}
 		
@@ -66,7 +82,7 @@ public class Recipients {
 			return this;
 		}
 		
-		public List<Recipient> build() {
+		public List<Recipient> asList() {
 			return Collections.unmodifiableList(rcpts);
 		}
 	}
