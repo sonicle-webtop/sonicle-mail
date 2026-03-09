@@ -66,21 +66,32 @@ import org.apache.commons.lang3.StringUtils;
  * @author malbinola
  */
 public class MimeMessageParser {
+	private boolean processDisplayParts = false;
 	
-	public static ParsedMimeMessageComponents parseMimeMessage(final MimeMessage message, final boolean isPECAccount) {
+	public MimeMessageParser withProcessDisplayParts(boolean processDisplayParts) {
+		this.processDisplayParts = processDisplayParts;
+		return this;
+	}
+	
+	public ParsedMimeMessageComponents parse(final MimeMessage message, final boolean isPECAccount) {
 		ParsedMimeMessageComponents parsed = new ParsedMimeMessageComponents(isPECAccount);
 		
-		parseMimePartTree(message, parsed, 0);
+		parseMimePartTree(parsed, message, 0);
 		if (parsed.displayParts.isEmpty() && !parsed.attachmentParts.isEmpty()) {
 			Part part0 = parsed.attachmentParts.get(0);
 			if (isMimeType(part0, "text/plain") || isMimeType(part0, "text/html") || isMimeType(part0, "message/delivery-status")) {
 				parsed.appendDisplayPart(part0, 0);
 			}
 		}
+		
+		if (processDisplayParts) {
+			//TODO: getHTMLParts here!
+		}
+		
 		return parsed;
 	}
-
-	private static void parseMimePartTree(final Part currentPart, final ParsedMimeMessageComponents parsed, final int depth) {
+	
+	private void parseMimePartTree(final ParsedMimeMessageComponents parsed, final Part currentPart, final int depth) {
 		final String currentDisposition = parseDisposition(currentPart);
 		
 		if (isMimeType(currentPart, "text/plain") 
@@ -109,14 +120,14 @@ public class MimeMessageParser {
 			
 		} else if (isMimeType(currentPart, "message/rfc822")) {
 			parsed.appendDisplayPart(currentPart, depth);
-			parseMimePartTree((Message)parseContent(currentPart), parsed, depth+1);
+			parseMimePartTree(parsed, (Message)parseContent(currentPart), depth+1);
 			
 		} else if (isMimeType(currentPart, "application/ms-tnef")) {
 			try {
 				TnefMultipart tnetMultipart = new TnefMultipart(new TnefMultipartDataSource((MimePart)currentPart));
 				for (int j = 0; j < countBodyParts(tnetMultipart); ++j) {
 					Part bodyPart = getBodyPartAtIndex(tnetMultipart, j);
-					parseMimePartTree(bodyPart, parsed, depth);
+					parseMimePartTree(parsed, bodyPart, depth);
 				}
 			} catch (Throwable ex) {
 				//Service.logger.error("Exception", exc);
@@ -130,7 +141,7 @@ public class MimeMessageParser {
 			parsed.appendAttachmentPart(currentPart, depth);
 			
 		} else if (isMimeType(currentPart, "multipart/alternative")) {
-			final Part altPart = parseAndFindAlternativeDisplayPart(parseContent(currentPart), parsed, depth);
+			final Part altPart = parseAndFindAlternativeDisplayPart(parsed, parseContent(currentPart), depth);
 			if (altPart != null) {
 				parsed.appendDisplayPart(altPart, depth);
 			}
@@ -173,14 +184,14 @@ public class MimeMessageParser {
 						parsed.appendAttachmentPart(mpPart, depth);
 						++newDepth;
 					}
-					parseMimePartTree((Message)parseContent(mpPart), parsed, newDepth);
+					parseMimePartTree(parsed, (Message)parseContent(mpPart), newDepth);
 					
 				} else if (isMimeType(mpPart, "application/ms-tnef")) {// uguale a sopra
 					try {
 						TnefMultipart tnetMultipart = new TnefMultipart(new TnefMultipartDataSource((MimePart)mpPart));
 						for (int j = 0; j < countBodyParts(tnetMultipart); ++j) {
 							final Part bodyPart = getBodyPartAtIndex(tnetMultipart, j);
-							parseMimePartTree(bodyPart, parsed, depth);
+							parseMimePartTree(parsed, bodyPart, depth);
 						}
 					} catch (Throwable ex) {
 						//Service.logger.error("Exception", exc);
@@ -194,10 +205,10 @@ public class MimeMessageParser {
 					parsed.appendAttachmentPart(mpPart, depth);
 				
 				} else if (isMimeType(mpPart, "multipart/*")) {// multipart diverso !!!
-					parseMimePartTree(mpPart, parsed, depth);
+					parseMimePartTree(parsed, mpPart, depth);
 					
 				} else if (isMimeType(mpPart, "multipart/alternative")) {
-					final Part altPart = parseAndFindAlternativeDisplayPart(parseContent(currentPart), parsed, depth);
+					final Part altPart = parseAndFindAlternativeDisplayPart(parsed, parseContent(currentPart), depth);
 					final String altDisposition = parseDisposition(altPart);
 					
 					if (altPart != null) {
@@ -223,7 +234,7 @@ public class MimeMessageParser {
 				} else {// else diverso !!!
 					parsed.appendUnknownPart(mpPart, depth);
 					parsed.appendAttachmentPart(mpPart, depth);
-					evaluateCidPart(mpPart, parsed, depth);
+					evaluateCidPart(parsed, mpPart, depth);
 				}
 			}
 			
@@ -233,7 +244,7 @@ public class MimeMessageParser {
 		}
 	}
 	
-	private static Part parseAndFindAlternativeDisplayPart(final Multipart currentPart, final ParsedMimeMessageComponents parsed, final int depth) {
+	private Part parseAndFindAlternativeDisplayPart(final ParsedMimeMessageComponents parsed, final Multipart currentPart, final int depth) {
 		Part displayPart = null;
 		boolean htmlFound = false;
 		for (int j = 0; j < countBodyParts(currentPart); ++j) {
@@ -242,12 +253,12 @@ public class MimeMessageParser {
 			
 			if (isMimeType(altPart, "multipart/*")) {
 				if (isMimeType(altPart, "multipart/related")) {
-					displayPart = parseAndFindAlternativeDisplayPart(parseContent(altPart), parsed, depth); 
+					displayPart = parseAndFindAlternativeDisplayPart(parsed, parseContent(altPart), depth); 
 					if (isMimeType(altPart, "text/html")) {
 						htmlFound = true;
 					}
 				} else {
-					parseMimePartTree(altPart, parsed, depth);
+					parseMimePartTree(parsed, altPart, depth);
 				}
 			} else if (isMimeType(altPart, "text/html")) {
 				displayPart = altPart;
@@ -277,13 +288,13 @@ public class MimeMessageParser {
 			} else {
 				parsed.appendUnknownPart(altPart, depth);
 				parsed.appendAttachmentPart(altPart, depth);
-				evaluateCidPart(altPart, parsed, depth);
+				evaluateCidPart(parsed, altPart, depth);
 			}
 		}
 		return displayPart;
 	}
 	
-	private static void evaluateCidPart(final Part part, final ParsedMimeMessageComponents parsed, final int depth) {
+	private void evaluateCidPart(final ParsedMimeMessageComponents parsed, final Part part, final int depth) {
 		// Look for a possible CID
 		String cid = parseContentID(part);
 		String filename = (cid != null) ? cid : parseFileName(part, false);		
