@@ -34,8 +34,10 @@
 package com.sonicle.mail.parser;
 
 import com.sonicle.commons.EnumUtils;
+import com.sonicle.commons.MailUtils;
 import com.sonicle.mail.MimeUtils;
 import com.sonicle.mail.email.CalendarMethod;
+import com.sonicle.mail.imap.SonicleIMAPMessage;
 import com.sonicle.mail.tnef.internet.TnefMultipart;
 import com.sonicle.mail.tnef.internet.TnefMultipartDataSource;
 import jakarta.mail.Address;
@@ -47,8 +49,10 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimePart;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -60,16 +64,29 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.XMLReaderFactory;
 
 /**
  *
  * @author malbinola
  */
 public class MimeMessageParser {
-	private boolean processDisplayParts = false;
 	
-	public MimeMessageParser withProcessDisplayParts(boolean processDisplayParts) {
-		this.processDisplayParts = processDisplayParts;
+	private final static Logger LOGGER = LoggerFactory.getLogger(MimeMessageParser.class);
+	
+	private boolean processDisplayParts = false;
+	private boolean pdpBalanceTags = false;
+	private DisplayPartEvaluator dpe = null;
+	
+	public MimeMessageParser withProcessDisplayParts(boolean balanceTags, DisplayPartEvaluator dpe) {
+		this.processDisplayParts = true;
+		this.pdpBalanceTags = balanceTags;
+		this.dpe = dpe;
 		return this;
 	}
 	
@@ -85,7 +102,11 @@ public class MimeMessageParser {
 		}
 		
 		if (processDisplayParts) {
-			//TODO: getHTMLParts here!
+			try {
+				processDisplayParts(parsed, message);
+			} catch(MessagingException|IOException exc) {
+				LOGGER.error("Error processing display parts", exc);
+			}
 		}
 		
 		return parsed;
@@ -308,14 +329,232 @@ public class MimeMessageParser {
 		}
 	}
 	
+	public static class DisplayPartEvaluator {
+		
+		public void evaluateCalendar(ParsedMimeMessageComponents parsed, Part part, InputStream istream, String charset) throws IOException, MessagingException { }
+		
+		public void evaluatePlainText(ParsedMimeMessageComponents parsed, Part part, InputStream istream, String charset) throws IOException, MessagingException { }
+		
+		public void evaluateMessage(ParsedMimeMessageComponents parsed, Part part, InputStream istream, String charset) throws IOException, MessagingException { }
+	}
+	
+    private void processDisplayParts(ParsedMimeMessageComponents parsed, MimeMessage m) throws MessagingException, IOException {
+		long msguid = 0;
+		
+		if (m instanceof SonicleIMAPMessage) msguid = ((SonicleIMAPMessage) m).getUID();
+		
+		//first cycle parts to get a possible default charset
+		String defaultCharset=null;
+		for(Part dispPart: parsed.getDisplayParts()) {
+			//Use workaround for NethServer installation:
+			defaultCharset=MailUtils.getCharsetOrNull(dispPart);
+			if (defaultCharset != null) break;
+		}
+		
+		for(Part dispPart: parsed.getDisplayParts()) {
+		  java.io.InputStream istream=null;
+		  
+		  String charset=null;
+		  if (defaultCharset==null)
+			  //Use workaround for NethServer installation:
+			  charset=MailUtils.getCharsetOrDefault(dispPart);
+		  else {
+			  //Use workaround for NethServer installation:
+			  charset=MailUtils.getCharsetOrNull(dispPart);
+			  if (charset==null) charset=defaultCharset;
+		  }
+		  
+		  if (dispPart.isMimeType("text/plain")||dispPart.isMimeType("text/html")||dispPart.isMimeType("message/delivery-status")||dispPart.isMimeType("message/disposition-notification")||dispPart.isMimeType("text/calendar")||dispPart.isMimeType("application/ics")) {
+			  try {
+				if (dispPart instanceof jakarta.mail.internet.MimeMessage) {
+				  jakarta.mail.internet.MimeMessage mm=(jakarta.mail.internet.MimeMessage)dispPart;
+				  istream=mm.getInputStream();
+				} else if (dispPart instanceof jakarta.mail.internet.MimeBodyPart) {
+				  jakarta.mail.internet.MimeBodyPart mm=(jakarta.mail.internet.MimeBodyPart)dispPart;
+				  istream=mm.getInputStream();
+				}
+			  } catch(Exception exc) { //unhandled format, get Raw data
+				if (dispPart instanceof jakarta.mail.internet.MimeMessage) {
+				  jakarta.mail.internet.MimeMessage mm=(jakarta.mail.internet.MimeMessage)dispPart;
+				  istream=mm.getRawInputStream();
+				} else if (dispPart instanceof jakarta.mail.internet.MimeBodyPart) {
+				  jakarta.mail.internet.MimeBodyPart mm=(jakarta.mail.internet.MimeBodyPart)dispPart;
+				  istream=mm.getRawInputStream();
+				}
+			  }
+
+
+			  if (istream==null) throw new IOException("Unknown message class "+dispPart.getClass().getName());
+
+
+			  StringBuffer xhtml=new StringBuffer();
+			  if (dispPart.isMimeType("text/html")) {
+				  Object tlock=new Object();
+				  HTMLMailParserThread parserThread=null;
+				  parserThread=new HTMLMailParserThread(tlock, istream, charset, pdpBalanceTags);
+				  try {
+					  java.io.BufferedReader breader=startHTMLMailParser(parserThread, new SaxHTMLMailEvaluator(parsed) {
+						  @Override
+						  public void evaluateCid(String cidName) {
+							parsed.addReferencedCid(cidName);
+						  }
+
+						  @Override
+						  public String evaluateUrl(String url, String baseUrl) {
+							boolean islocal = parsed.containsUrlPart(url);
+							if(!islocal) { //must use remote url: compose if necessary
+							  if(baseUrl==null) {
+								return url;
+							  }
+							  String str=null;
+							  int len=url.length();
+							  if (len>3) str=url.substring(0, 4).toLowerCase();
+							  if(str!=null && (str.startsWith("http")||str.startsWith("ftp:"))) {
+								return url;
+							  }
+							  if(len>0 && url.charAt(0)=='/') {
+								url=url.substring(1);
+							  }
+							  return baseUrl+url;
+							}
+							parsed.removeUnknownPart(parsed.getUrlPart(url));
+							return url;
+						  }
+						  
+					  }, false);
+					  char chars[]=new char[8192];
+					  int n=0;
+					  while((n=breader.read(chars))>=0) {
+					   if (n>0) xhtml.append(chars,0,n);
+					  }
+				  } catch(Exception exc) {
+					  LOGGER.error("Exception",exc);
+					  parserThread.notifyParserEndOfRead();
+				  }
+				  parserThread.notifyParserEndOfRead();
+
+				  parsed.appendProcessedHTMLPart(xhtml.toString(),parserThread.getHrefs());
+				  
+			  } else if (dispPart.isMimeType("text/calendar")||dispPart.isMimeType("application/ics")) {
+				  if (dispPart.getContentType().contains("method=") && dpe != null) {
+					  dpe.evaluateCalendar(parsed, dispPart, istream, charset);
+				  } else {
+					  parsed.appendAttachmentPart(dispPart,0);
+				  }
+			  } else {
+				  if (dpe != null) dpe.evaluatePlainText(parsed, dispPart, istream, charset);
+			  }
+		  } else if (dispPart.isMimeType("message/*")) {
+			  dpe.evaluateMessage(parsed, dispPart, istream, charset);
+		  }
+
+		}
+	}
+	
+	class HTMLMailParserThread implements Runnable {
+
+	  InputStream istream=null;
+	  String charset=null;
+	  Object threadLock=null;
+	  SaxHTMLMailParser saxHTMLMailParser=null;
+	  boolean balanceTags=true;
+
+	  HTMLMailParserThread(Object tlock, InputStream istream, String charset, boolean balanceTags) {
+		  this.threadLock=tlock;
+		  this.istream=istream;
+		  this.charset=charset;
+		  this.balanceTags=balanceTags;
+		  this.saxHTMLMailParser=new SaxHTMLMailParser();
+	  }
+
+	  public void initialize(SaxHTMLMailEvaluator evaluator, boolean justBody) throws SAXException {
+		  saxHTMLMailParser.initialize(evaluator, justBody, true);        
+	  }
+
+	  public void run() {
+		try {
+			doHTMLMailParse(saxHTMLMailParser,istream,charset,balanceTags);
+			synchronized(threadLock) {
+				threadLock.wait(60000); //give up after one minute
+			}
+		} catch(Exception exc) {
+			LOGGER.error("Exception",exc);
+		}
+	  }
+
+	  public BufferedReader getParsedHTML() {
+		  return saxHTMLMailParser.getParsedHTML();        
+	  }
+
+	  private void notifyParserEndOfRead() {
+		  synchronized(threadLock) {
+			threadLock.notifyAll();
+		  }
+		  saxHTMLMailParser.release();
+	  }
+
+	  public ArrayList<String> getHrefs() {
+		  return saxHTMLMailParser.getHrefs();
+	  }
+
+	}
+
+	private void doHTMLMailParse(SaxHTMLMailParser saxHTMLMailParser, InputStream istream, String charset, boolean balanceTags) throws SAXException, IOException {
+	  HTMLInputStream hstream=new HTMLInputStream(istream);
+	  XMLReader xmlparser=XMLReaderFactory.createXMLReader("org.cyberneko.html.parsers.SAXParser");
+	  //XMLReader xmlparser=XMLReaderFactory.createXMLReader("net.sourceforge.htmlunit.cyberneko.parsers.SAXParser");
+	  xmlparser.setProperty("http://xml.org/sax/properties/lexical-handler", saxHTMLMailParser);
+	  xmlparser.setFeature("http://apache.org/xml/features/scanner/notify-char-refs", true);
+	  //xmlparser.setFeature("http://cyberneko.org/html/features/balance-tags", balanceTags);
+	  xmlparser.setContentHandler(saxHTMLMailParser);
+	  xmlparser.setErrorHandler(saxHTMLMailParser);
+	  while(!hstream.isRealEof()) {
+		hstream.newDocument();
+		InputStreamReader isr=null;
+		try {
+			isr=charset!=null?new InputStreamReader(hstream,charset):new InputStreamReader(hstream);
+		} catch(java.io.UnsupportedEncodingException exc) {
+			isr=new InputStreamReader(hstream);	
+		}
+		xmlparser.parse(new InputSource(isr));
+	  }
+	  saxHTMLMailParser.endOfFile();
+	}
+	
+	private BufferedReader startHTMLMailParser(HTMLMailParserThread parserThread, SaxHTMLMailEvaluator evaluator, boolean justBody) throws SAXException {
+	  Thread engine=new Thread(parserThread);
+	  parserThread.initialize(evaluator, justBody);
+	  engine.start();
+	  return parserThread.getParsedHTML();
+	}
+	
+	
 	public static class ParsedMimeMessageComponents {
+
+		public class HTMLPart {
+
+			public String html;
+			public ArrayList<String> hrefs;
+
+			HTMLPart(String html) {
+				this(html, new ArrayList<String>());
+			}
+			
+			HTMLPart(String html, ArrayList<String> hrefs) {
+				this.html=html;
+				this.hrefs=hrefs;
+			}
+		}
+	
 		private final boolean isPECAccount;
 		private final HashMap<Part, Integer> partDepthMap = new HashMap<>();
 		private final ArrayList<Part> displayParts = new ArrayList<>();
 		private final ArrayList<Part> attachmentParts = new ArrayList<>();
 		private final ArrayList<Part> unknownParts = new ArrayList<>();
+		private final ArrayList<HTMLPart> processedHtmlParts=new ArrayList<>();
 		private final HashMap<String, Part> cidParts = new LinkedHashMap<>();
 		private final HashMap<String, Part> urlParts = new LinkedHashMap<>();
+		private final ArrayList<String> referencedCids=new ArrayList<>();
 		public boolean hasICalAttachment = false;
 		private CalendarMethod calendarMethod = null;
 		private String calendarContent = null;
@@ -338,6 +577,10 @@ public class MimeMessageParser {
 		
 		public ArrayList<Part> getUnknownParts() {
 			return unknownParts;
+		}
+		
+		public ArrayList<HTMLPart> getProcessedHTMLParts() {
+			return processedHtmlParts;
 		}
 		
 		public HashMap<String, Part> getCidParts() {
@@ -366,9 +609,44 @@ public class MimeMessageParser {
 			partDepthMap.put(part, depth);
 		}
 		
-		private void appendUnknownPart(Part part, int depth) {
+		public void appendUnknownPart(Part part, int depth) {
 			unknownParts.add(part);
 			partDepthMap.put(part, depth);
+		}
+		
+		public void appendProcessedHTMLPart(String html, ArrayList<String> hrefs) {
+			processedHtmlParts.add(new HTMLPart(html, hrefs));
+		}
+		
+		public void appendProcessedHTMLPart(String html) {
+			processedHtmlParts.add(new HTMLPart(html));
+		}
+		
+		public void appendProcessedHTMLPart(int index, String html) {
+			processedHtmlParts.add(index, new HTMLPart(html));
+		}
+		
+		public void addReferencedCid(String name) {
+			Part cidPart = getCidPart(name);
+			if (cidPart != null) removeUnknownPart(cidPart);
+			referencedCids.add(name);
+		}
+  
+		private Part getCidPart(String name) {
+			return cidParts.get(name);
+		}
+		
+		private void removeUnknownPart(Part part) {
+			unknownParts.remove(part);
+			partDepthMap.remove(part);
+		}
+		
+		private boolean containsUrlPart(String url) {
+			return urlParts.containsKey(url);
+		}
+		
+		private Part getUrlPart(String url) {
+			return urlParts.get(url);
 		}
 		
 		private void appendCidPart(String name, Part part, int depth) {

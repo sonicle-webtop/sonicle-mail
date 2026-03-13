@@ -199,6 +199,14 @@ public class Mailbox {
 		}
 	}
 	
+	public Folder getRootFolder() throws MessagingException {
+		return doGetRootFolder();
+	}
+	
+	public Folder getFolder(final String name) throws MessagingException {
+		return getFolder(name, false);
+	}
+	
 	public Folder getFolder(final String name, final boolean createIfNecessary) throws MessagingException {
 		long stamp = lock.readLock();
 		try {
