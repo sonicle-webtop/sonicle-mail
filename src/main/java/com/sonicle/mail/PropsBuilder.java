@@ -75,9 +75,31 @@ public class PropsBuilder {
 		return this;
 	}
 	
-	public PropsBuilder withSonicleIMAPFolder() {
+	/**
+	 * @deprecated use withCustomizedIMAPFolderClasses instead
+	 */
+	@Deprecated public PropsBuilder withSonicleIMAPFolder() {
+		return withCustomizedIMAPFolderClasses();
+	}
+	
+	public PropsBuilder withCustomizedIMAPFolderClasses() {
 		props.setProperty("mail.imap.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
 		props.setProperty("mail.imaps.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
+		return this;
+	}
+	
+	public PropsBuilder withAvoidSlownessOnGettingLocalHostName() {
+		
+		// Calls to InternetAddress.getLocalHostName can be slow, especially 
+		// in dev/local environments, when the internal flow tries to call 
+		// the inner method getCanonicalHostName. This tries to reverse the 
+		// discovered InetAddress for getting a FQDN, this can be slow on 
+		// environments without a DNS properly configured.
+		// Also MimeMessage.reply() method may be affected.
+		// https://github.com/jakartaee/mail-api/blob/master/api/src/main/java/jakarta/mail/internet/MimeMessage.java#L1738C13-L1738C75
+		// https://github.com/jakartaee/mail-api/blob/master/api/src/main/java/jakarta/mail/internet/InternetAddress.java#L664C27-L664C47
+		
+		props.setProperty("mail.mime.address.usecanonicalhostname", "false");
 		return this;
 	}
 	

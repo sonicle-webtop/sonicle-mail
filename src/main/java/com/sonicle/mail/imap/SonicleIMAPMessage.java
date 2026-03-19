@@ -8,11 +8,13 @@ package com.sonicle.mail.imap;
 import com.sun.mail.imap.IMAPMessage;
 import com.sun.mail.imap.protocol.BODYSTRUCTURE;
 import com.sun.mail.imap.protocol.Item;
+import jakarta.mail.Address;
+import jakarta.mail.Message;
 import java.util.Date;
 import java.util.Map;
 import jakarta.mail.MessagingException;
-import jakarta.mail.Part;
 import jakarta.mail.internet.MailDateFormat;
+import jakarta.mail.internet.MimeMessage;
 import java.io.IOException;
 import java.text.ParseException;
 
@@ -241,6 +243,51 @@ public class SonicleIMAPMessage extends IMAPMessage {
 			if (method != null && method.equals("REQUEST")) retval = true;
 		}
 		return retval;
-	}    
-	
+	}
+
+	/**
+	 * Get a new Message suitable for a reply to this message.
+	 * @param replyToAll Reply should be sent to all recipients of this message.
+	 * @param setAnswered Set the ANSWERED flag in this message?
+	 * @param isSentMessage Does the message you are replying belong to Sent folder?
+	 * @return the reply Message
+	 * @throws MessagingException 
+	 */
+	public Message reply(boolean replyToAll, boolean setAnswered, boolean isSentMessage) throws MessagingException {
+		if (isSentMessage) {
+			// If source message is a "sent" message (usually belonging from Sent folder)
+			// we would like to reply to recipients to that message: the first one 
+			// if the action is a simple reply, the whole recipients if it is reply-all.
+			Message reply = reply(replyToAll, setAnswered);
+			
+			// The above method will set the 1st To as the replyTo address...
+			Address[] replyTos = null;
+			if (!replyToAll) {
+				// Set as recipents only the 1st recipient of the Sent message
+				Address[] tos = getRecipients(MimeMessage.RecipientType.TO);
+				if (tos != null && tos.length > 0) {
+					replyTos = new Address[]{tos[0]};
+				}
+				
+			} else {
+				// Remove the 1st To (set to the replyTo address) and keep other one...
+				Address[] origTos = reply.getRecipients(MimeMessage.RecipientType.TO);
+				if (origTos != null && origTos.length > 1) {
+					replyTos = new Address[origTos.length-1];
+					for (int i = 1; i < origTos.length; i++) {
+						replyTos[i-1] = origTos[i];
+					}
+				}
+			}
+			
+			if (replyTos != null) {
+				reply.setRecipients(Message.RecipientType.TO, replyTos);
+			}
+				
+			return reply;
+			
+		} else {
+			return reply(replyToAll, setAnswered);
+		}
+	}
 }

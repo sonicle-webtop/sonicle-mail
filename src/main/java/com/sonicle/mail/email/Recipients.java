@@ -33,11 +33,16 @@
  */
 package com.sonicle.mail.email;
 
+import jakarta.mail.Address;
 import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import net.sf.qualitycheck.Check;
 
 /**
@@ -45,6 +50,30 @@ import net.sf.qualitycheck.Check;
  * @author malbinola
  */
 public class Recipients {
+	
+	public static Message removeAnyFrom(final Message message, final Set<InternetAddress> addressToRemove) throws MessagingException {
+		removeFrom(message, addressToRemove, Message.RecipientType.TO);
+		removeFrom(message, addressToRemove, Message.RecipientType.CC);
+		removeFrom(message, addressToRemove, Message.RecipientType.BCC);
+		return message;
+	}
+	
+	public static Message removeFrom(final Message message, final Set<InternetAddress> addressToRemove, Message.RecipientType recipientType) throws MessagingException {
+		Address[] rcpts = message.getRecipients(recipientType);
+		if (rcpts != null && rcpts.length > 0) {
+			List<Address> filteredRcpts = Arrays.stream(rcpts)
+				.filter(addr -> {
+					if (addr instanceof InternetAddress) {
+						return !addressToRemove.contains((InternetAddress)addr);
+					}
+					return true; // Keep non-internet addresses
+				})
+				.collect(Collectors.toList());
+			
+			message.setRecipients(recipientType, filteredRcpts.toArray(new Address[0]));
+		}
+		return message;
+	}
 	
 	public static Builder to(InternetAddress internetAddress) {
 		return new Builder().to(internetAddress);
