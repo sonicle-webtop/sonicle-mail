@@ -571,7 +571,7 @@ public class MimeMessageParser {
 			return displayParts;
 		}
 		
-		public ArrayList<Part> geAttachmentParts() {
+		public ArrayList<Part> getAttachmentParts() {
 			return attachmentParts;
 		}
 		
