@@ -91,7 +91,7 @@ public class MimeMessageParser {
 	}
 	
 	public ParsedMimeMessageComponents parse(final MimeMessage message, final boolean isPECAccount) {
-		ParsedMimeMessageComponents parsed = new ParsedMimeMessageComponents(isPECAccount);
+		ParsedMimeMessageComponents parsed = new ParsedMimeMessageComponents(message, isPECAccount);
 		
 		parseMimePartTree(parsed, message, 0);
 		if (parsed.displayParts.isEmpty() && !parsed.attachmentParts.isEmpty()) {
@@ -545,6 +545,8 @@ public class MimeMessageParser {
 				this.hrefs=hrefs;
 			}
 		}
+		
+		private MimeMessage originalMessage = null;
 	
 		private final boolean isPECAccount;
 		private final HashMap<Part, Integer> partDepthMap = new HashMap<>();
@@ -563,6 +565,15 @@ public class MimeMessageParser {
 			this.isPECAccount = isPECAccount;
 		}
 				
+		ParsedMimeMessageComponents(final MimeMessage originalMessage, final boolean isPECAccount) {
+			this.originalMessage = originalMessage;
+			this.isPECAccount = isPECAccount;
+		}
+		
+		public MimeMessage getOriginalMessage() {
+			return originalMessage;
+		}
+				
 		public HashMap<Part, Integer> getPartsDepthMap() {
 			return partDepthMap;
 		}
@@ -575,6 +586,17 @@ public class MimeMessageParser {
 			return attachmentParts;
 		}
 		
+		public String getContentType(int index) {
+			String contentType = "";
+			try {
+				Part part = attachmentParts.get(index);
+				if (part != null) contentType = part.getContentType();
+			} catch(MessagingException exc) {
+				
+			}
+			return contentType;
+		}
+		
 		public ArrayList<Part> getUnknownParts() {
 			return unknownParts;
 		}
@@ -585,6 +607,17 @@ public class MimeMessageParser {
 		
 		public HashMap<String, Part> getCidParts() {
 			return cidParts;
+		}
+		
+		public String getContentType(String cidName) {
+			String contentType = "";
+			try {
+				Part part = cidParts.get(cidName);
+				if (part != null) contentType = part.getContentType();
+			} catch(MessagingException exc) {
+				
+			}
+			return contentType;
 		}
 		
 		public HashMap<String, Part> getUrlParts() {
