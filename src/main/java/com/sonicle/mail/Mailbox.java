@@ -255,6 +255,28 @@ public class Mailbox {
 		}
 	}
 	
+	public String getSharedFolderName(String mailUser) throws MessagingException {
+		String sharedFolderName = null;
+		String folderName = null;
+		
+		// Clear mailUser removing any domain info (ldap auth contains 
+		// domain suffix), we don't want it!
+		String user = StringUtils.split(mailUser, "@")[0];
+		
+		for(String sharedPrefix: sharedPrefixes) {
+			Folder sharedFolder = getFolder(sharedPrefix);
+			for(Folder fo : sharedFolder.list()) {
+				folderName = fo.getFullName(); 
+				char sep=fo.getSeparator();
+				//if is a shared mailbox, and it contains an @, match it with mail user (NS7)
+				//or just user instead (XStream and NS6)
+				String name = fo.getName().indexOf('@')>0?mailUser:user;
+				if(folderName.equals(sharedPrefix + sep + name)) return folderName;
+			}
+		}
+		return null;
+	}
+	
 	public void setSharedSeen(final boolean value) throws MessagingException {
 		long stamp = lock.readLock();
 		try {
