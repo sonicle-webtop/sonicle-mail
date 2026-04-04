@@ -52,15 +52,21 @@ public class AttachmentResource implements Serializable {
 	private static final long serialVersionUID = 1234567L;
 	private transient final DataSource dataSource;
 	private final String name;
+	private final String cidName;
 	private final ContentTransferEncoding contentTransferEncoding;
 	
 	public AttachmentResource(final DataSource dataSource, final String name) {
-		this(dataSource, name, null);
+		this(dataSource, name, null, null);
 	}
 	
-	public AttachmentResource(final DataSource dataSource, final String name, final ContentTransferEncoding contentTransferEncoding) {
+	public AttachmentResource(final DataSource dataSource, final String name, final String cidName) {
+		this(dataSource, name, cidName, null);
+	}
+	
+	public AttachmentResource(final DataSource dataSource, final String name, final String cidName, final ContentTransferEncoding contentTransferEncoding) {
 		this.dataSource = Check.notNull(dataSource, "dataSource");
 		this.name = name;
+		this.cidName = cidName;
 		this.contentTransferEncoding = contentTransferEncoding;
 	}
 
@@ -70,6 +76,10 @@ public class AttachmentResource implements Serializable {
 	
 	public String getName() {
 		return name;
+	}
+	
+	public String getCidName() {
+		return cidName;
 	}
 
 	public ContentTransferEncoding getContentTransferEncoding() {

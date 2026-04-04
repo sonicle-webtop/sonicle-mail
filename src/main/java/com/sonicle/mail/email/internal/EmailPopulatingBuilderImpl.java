@@ -847,28 +847,38 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	
 	@Override
 	public EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name) {
-		return withAttachment(data, mimetype, name, null);
+		return withAttachment(data, mimetype, name, null, null);
 	}
 	
 	@Override
-	public EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name, final ContentTransferEncoding contentTransferEncoding) {
+	public EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name, final String cidName) {
+		return withAttachment(data, mimetype, name, cidName, null);
+	}
+	
+	@Override
+	public EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name, final String cidName, final ContentTransferEncoding contentTransferEncoding) {
 		Check.notNull(data, "data");
 		Check.notNull(mimetype, "mimetype");
 		final ByteArrayDataSource dataSource = new ByteArrayDataSource(data, mimetype);
 		dataSource.setName(name);
-		withAttachment(dataSource, name, contentTransferEncoding);
+		withAttachment(dataSource, name, cidName, contentTransferEncoding);
 		return this;
 	}
 	
 	@Override
 	public EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name) {
-		return withAttachment(filedata, name, null);
+		return withAttachment(filedata, name, null, null);
 	}
 	
 	@Override
-	public EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name, final ContentTransferEncoding contentTransferEncoding) {
+	public EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name, String cidName) {
+		return withAttachment(filedata, name, cidName, null);
+	}
+	
+	@Override
+	public EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name, final String cidName, final ContentTransferEncoding contentTransferEncoding) {
 		Check.notNull(filedata, "filedata");
-		attachments.add(new AttachmentResource(filedata, name, contentTransferEncoding));
+		attachments.add(new AttachmentResource(filedata, name, cidName, contentTransferEncoding));
 		return this;
 	}
 	
@@ -877,7 +887,7 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 		Check.notNull(attachments, "attachments");
 		for (final AttachmentResource attachment : attachments) {
 			if (attachment == null) continue;
-			withAttachment(attachment.getDataSource(), attachment.getName(), attachment.getContentTransferEncoding());
+			withAttachment(attachment.getDataSource(), attachment.getName(), attachment.getCidName(), attachment.getContentTransferEncoding());
 		}
 		return this;
 	}

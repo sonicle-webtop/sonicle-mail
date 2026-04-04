@@ -161,9 +161,11 @@ public interface EmailPopulatingBuilder {
 	EmailPopulatingBuilder appendTextHTML(final String textHTML);
 	EmailPopulatingBuilder withCalendarText(final CalendarMethod calendarMethod, String textCalendar);
 	EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name);
-	EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name, final ContentTransferEncoding contentTransferEncoding);
+	EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name, final String cidName);
+	EmailPopulatingBuilder withAttachment(final byte[] data, final String mimetype, final String name, final String cidName, final ContentTransferEncoding contentTransferEncoding);
 	EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name);
-	EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name, final ContentTransferEncoding contentTransferEncoding);
+	EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name, final String cidName);
+	EmailPopulatingBuilder withAttachment(final DataSource filedata, final String name, final String cidName, final ContentTransferEncoding contentTransferEncoding);
 	EmailPopulatingBuilder withAttachments(final Collection<AttachmentResource> attachments);
 	<T> EmailPopulatingBuilder withHeaders(final Map<String, Collection<T>> headers);
 	EmailPopulatingBuilder withHeader(final String name, final Object value);

@@ -184,6 +184,10 @@ public class Mailbox {
 		}
 	}
 	
+	public char getFolderSeparator() {
+		return folderSeparator;
+	}
+	
 	public Folder getInboxFolder() throws MessagingException {
 		long stamp = lock.readLock();
 		try {
