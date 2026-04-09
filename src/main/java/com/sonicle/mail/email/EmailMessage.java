@@ -52,6 +52,9 @@ public class EmailMessage {
 	private final Recipient bounceToRecipient;
 	private final List<Recipient> recipients;
 	private final String subject;
+	private final String forwardedFrom;
+	private final String inReplyTo;
+	private final String references;
 	private transient final MimeMessage emailToForward;
 	private final String textPlain;
 	private final String textHTML;
@@ -77,6 +80,9 @@ public class EmailMessage {
 		recipients = Collections.unmodifiableList(builder.getRecipients());
 		emailToForward = builder.getEmailToForward();
 		subject = builder.getSubject();
+		forwardedFrom = builder.getForwardedFrom();
+		inReplyTo = builder.getInReplyTo();
+		references = builder.getReferences();
 		textPlain = /*smimeMerge ? smimeSignedEmail.getTextPlain() :*/ builder.getTextPlain();
 		textHTML = /*smimeMerge ? smimeSignedEmail.getTextHTML() :*/ builder.getTextHTML();
 		calendarMethod = builder.getCalendarMethod();
@@ -132,6 +138,18 @@ public class EmailMessage {
 	
 	public String getSubject() {
 		return subject;
+	}
+	
+	public String getForwardedFrom() {
+		return forwardedFrom;
+	}
+	
+	public String getInReplyTo() {
+		return inReplyTo;
+	}
+	
+	public String getReferences() {
+		return references;
 	}
 	
 	public MimeMessage getEmailToForward() {

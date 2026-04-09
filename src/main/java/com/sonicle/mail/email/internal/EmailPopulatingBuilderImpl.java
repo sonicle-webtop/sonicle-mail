@@ -69,6 +69,9 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	protected Recipient bounceToRecipient;
 	protected List<Recipient> recipients;
 	protected String subject;
+	protected String forwardedFrom;
+	protected String inReplyTo;
+	protected String references;
 	private MimeMessage emailToForward;
 	protected String textPlain;
 	protected String textHTML;
@@ -721,6 +724,24 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	}
 	
 	@Override
+	public EmailPopulatingBuilder withForwardedFrom(final String id) {
+		this.forwardedFrom = id;
+		return this;
+	}
+	
+	@Override
+	public EmailPopulatingBuilder withInReplyTo(final String id) {
+		this.inReplyTo = id;
+		return this;
+	}
+	
+	@Override
+	public EmailPopulatingBuilder withReferences(final String refs) {
+		this.references = refs;
+		return this;
+	}
+	
+	@Override
 	public InternalEmailPopulatingBuilder withForward(final MimeMessage emailMessageToForward) {
 		this.emailToForward = emailMessageToForward;
 		return this;
@@ -1083,6 +1104,21 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	@Override
 	public String getSubject() {
 		return subject;
+	}
+	
+	@Override
+	public String getForwardedFrom() {
+		return forwardedFrom;
+	}
+	
+	@Override
+	public String getInReplyTo() {
+		return inReplyTo;
+	}
+	
+	@Override
+	public String getReferences() {
+		return references;
 	}
 	
 	@Override

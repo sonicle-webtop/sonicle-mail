@@ -147,6 +147,9 @@ public interface EmailPopulatingBuilder {
 	EmailPopulatingBuilder withRecipient(final String name, boolean fixedName, final String singleAddress, final RecipientType recipientType);
 	EmailPopulatingBuilder withRecipient(final Recipient recipient);
 	EmailPopulatingBuilder withSubject(final String subject);
+	EmailPopulatingBuilder withForwardedFrom(final String id);
+	EmailPopulatingBuilder withInReplyTo(final String id);
+	EmailPopulatingBuilder withReferences(final String refs);
 	//EmailPopulatingBuilder withPlainText(final File textPlainFile);
 	EmailPopulatingBuilder withPlainText(final String textPlain);
 	//EmailPopulatingBuilder prependTextPlain(final File textPlainFile);
@@ -198,6 +201,9 @@ public interface EmailPopulatingBuilder {
 	public Recipient getBounceToRecipient();
 	public List<Recipient> getRecipients();
 	public String getSubject();
+	public String getForwardedFrom();
+	public String getInReplyTo();
+	public String getReferences();
 	public MimeMessage getEmailToForward();
 	public String getTextPlain();
 	public String getTextHTML();
