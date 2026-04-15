@@ -281,6 +281,31 @@ public class Mailbox {
 		return null;
 	}
 	
+	public boolean isUnderSharedFolder(String foldername) {
+		boolean b = false;
+		String str = null;
+		for (String fn : sharedPrefixes) {
+			str = fn + folderSeparator;
+			if (foldername.startsWith(str)) {
+				b = true;
+				break;
+			}
+		}
+		return b;
+	}
+	
+	public String getMainSharedFolder(String foldername) {
+		if (!foldername.endsWith(""+folderSeparator)) foldername+=folderSeparator;
+		for (String fn : sharedPrefixes) {
+			String str = fn + folderSeparator;
+			if (foldername.startsWith(str)) {
+				int ix=foldername.indexOf(folderSeparator,str.length());
+				if (ix>=0) return foldername.substring(0,ix);
+			}
+		}
+		return null;
+	}
+
 	public void setSharedSeen(final boolean value) throws MessagingException {
 		long stamp = lock.readLock();
 		try {

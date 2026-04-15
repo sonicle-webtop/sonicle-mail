@@ -101,6 +101,8 @@ public abstract class MimeMessageConstructor {
 		
 		populateMimeMessageMultipartStructure(message, email);
 		
+		setInReplyTo(email, message);
+		setReferences(email, message);
 		setHeaders(email, message);
 		message.setSentDate(email.getSentDate() != null ? email.getSentDate() : new Date());
 		
@@ -202,6 +204,20 @@ public abstract class MimeMessageConstructor {
 		}
 	}
 	
+	static void setInReplyTo(final EmailMessage email, final Message message) throws MessagingException {
+		setHeader(email, message, "In-Reply-To", email.getInReplyTo());
+	}
+	
+	static void setReferences(final EmailMessage email, final Message message) throws MessagingException {
+		setHeader(email, message, "References", email.getReferences());
+	}
+	
+	static void setHeader(final EmailMessage email, final Message message, String headerKey, String headerValue) throws MessagingException {
+		Check.notNull(email, "email");
+		Check.notNull(message, "message");
+		if (headerKey != null && headerValue != null) message.setHeader(headerKey, headerValue);
+	}
+
 	static void setHeaders(final EmailMessage email, final Message message) throws UnsupportedEncodingException, MessagingException {
 		Check.notNull(email, "email");
 		Check.notNull(message, "message");
