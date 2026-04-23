@@ -9,7 +9,6 @@ import com.sun.mail.imap.protocol.IMAPResponse;
 import com.sun.mail.util.ASCIIUtility;
 import java.util.ArrayList;
 import jakarta.mail.FetchProfile;
-import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import org.apache.commons.lang3.StringUtils;
 
@@ -29,9 +28,14 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
     private static final byte[] CLOSED_PARENTHESIS_CHARBYTES={ ')' };
     
     private int nmessages=0;
-	
+
 	SonicleIMAPFolder folder;
 	FetchProfile fetchProfile;
+
+	// Sequence numbers collected during parse() across all recursion levels.
+	// Bulk-fetched once by the caller (see SonicleIMAPFolder._issueThread)
+	// instead of issuing one FETCH per recursion level.
+	private final ArrayList<Integer> allSeqNums = new ArrayList<>();
 	
 	public SonicleIMAPThreadResponse(IMAPResponse r, SonicleIMAPFolder folder, FetchProfile fetchProfile) {
 		super(r);
@@ -134,18 +138,20 @@ public class SonicleIMAPThreadResponse extends IMAPResponse {
                 
             }
         }
-		int imsgs[]=new int[smsgs.size()];
-		for(int i=0;i<imsgs.length;++i) imsgs[i]=Integer.parseInt(smsgs.get(i));
-		Message msgs[]=new Message[imsgs.length];
-		msgs=folder.getMessages(imsgs);
-		folder.fetch(msgs, fetchProfile);
-        
+		for (String msg : smsgs) allSeqNums.add(Integer.parseInt(msg));
+
         return node;
     }
-    
+
     public int getMessageCount() {
         return nmessages;
     }
+
+	public int[] getAllSeqNums() {
+		int[] arr = new int[allSeqNums.size()];
+		for (int i = 0; i < arr.length; i++) arr[i] = allSeqNums.get(i);
+		return arr;
+	}
     
     private int indexOf(byte charbytes[]) {
         return indexOf(charbytes,0,buffer.length);

@@ -31,7 +31,7 @@ import org.apache.commons.lang3.StringUtils;
  * @author gbulfon
  */
 public class SonicleIMAPFolder extends IMAPFolder {
-	
+
 	private int threadRoots=0;
 
     private static String[] searchCharsets; 	// array of search charsets
@@ -109,7 +109,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
     public synchronized SonicleIMAPMessage[] thread(String method, SearchTerm term, FetchProfile fetchProfile)
 				throws MessagingException {
 		checkOpened();
-		
+
 		try {
 			SonicleIMAPMessage[] matches = null;
 
@@ -204,6 +204,10 @@ public class SonicleIMAPFolder extends IMAPFolder {
 				if (ir.keyEquals("THREAD")) {
 					SonicleIMAPThreadResponse sitr=new SonicleIMAPThreadResponse(ir,this,fetchProfile);
                     String parsed=sitr.parse();
+
+					// Single bulk fetch replacing the former per-recursion-level fetches in parse().
+					fetch(getMessages(sitr.getAllSeqNums()), fetchProfile);
+
 					String sorted=(method.equals("REFS")?parsed:sort_threads(parsed));
 					//System.out.println(method+"="+sorted);
                     matches=new SonicleIMAPMessage[sitr.getMessageCount()];
@@ -346,7 +350,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 					fterm = new FlagTerm(new Flags(Flags.Flag.SEEN), true);
 					sterm = term!=null ? new AndTerm(fterm, term) : fterm;
 					int[] seen = _sort(ssort,sterm);
-					
+
 					//append in correct order
 					matches = sort.isReversed() ? ArrayUtils.addAll(seen, unseen) : ArrayUtils.addAll(unseen, seen);
 				} else {
