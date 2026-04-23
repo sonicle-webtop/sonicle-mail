@@ -8,7 +8,6 @@ package com.sonicle.mail.imap;
 import com.sun.mail.iap.ProtocolException;
 import com.sun.mail.imap.IMAPStore;
 import java.io.IOException;
-import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.URLName;
 
@@ -17,28 +16,23 @@ import jakarta.mail.URLName;
  * @author gabriele.bulfon
  */
 public class SonicleIMAPStore extends IMAPStore {
-	
-	SonicleIMAPProtocol sonicleIMAPProtocol;
 
 	public SonicleIMAPStore(Session session, URLName url) {
 		super(session, url);
-		//System.out.println("Creating Sonicle IMAP Store class");
 	}
-	
+
     protected SonicleIMAPStore(Session session, URLName url,
 				String name, boolean isSSL) {
 		super(session,url,name,isSSL);
-		//System.out.println("Creating Sonicle IMAP Store class");
 	}
-	
+
     protected SonicleIMAPProtocol newIMAPProtocol(String host, int port)
 				throws IOException, ProtocolException {
-		//System.out.println("Creating Sonicle IMAP Protocol class");
-		return sonicleIMAPProtocol=new SonicleIMAPProtocol(name, host, port, 
+		return new SonicleIMAPProtocol(name, host, port,
 							session.getProperties(),
 							isSSL,
 							logger
 						   );
     }
-	
+
 }

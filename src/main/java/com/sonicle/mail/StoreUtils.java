@@ -34,6 +34,9 @@
 package com.sonicle.mail;
 
 import com.sonicle.mail.imap.SonicleIMAPFolder;
+import com.sonicle.mail.imap.SonicleIMAPSSLSocketFactory;
+import com.sonicle.mail.imap.SonicleIMAPSocketFactory;
+import com.sonicle.mail.imap.SonicleIMAPSocketTracker;
 import com.sun.mail.imap.ACL;
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPFolder.FetchProfileItem;
@@ -45,6 +48,7 @@ import jakarta.mail.Flags;
 import jakarta.mail.Folder;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
+import jakarta.mail.Provider;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.UIDFolder;
@@ -84,6 +88,16 @@ public class StoreUtils {
 		return properties;
 	}
 	
+	public static Properties useSonicleIMAPSocketFactories(final Properties properties, SonicleIMAPSocketTracker socketTracker) {
+		SonicleIMAPSocketFactory plainFactory = new SonicleIMAPSocketFactory(socketTracker);
+		SonicleIMAPSSLSocketFactory sslFactory = new SonicleIMAPSSLSocketFactory(socketTracker);
+		properties.put("mail.imap.socketFactory",      plainFactory);
+		properties.put("mail.imap.ssl.socketFactory",  sslFactory);
+		properties.put("mail.imaps.socketFactory",     plainFactory);
+		properties.put("mail.imaps.ssl.socketFactory", sslFactory);
+		return properties;
+	}
+
 	public static Session createSession(final StoreHostParams params, final int poolSize) throws GeneralSecurityException {
 		return createSession(params, poolSize, System.getProperties());
 	}
