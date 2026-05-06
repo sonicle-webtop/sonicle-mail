@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail.email;
 
+import com.sonicle.commons.Check;
 import jakarta.mail.Address;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
@@ -43,7 +44,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import net.sf.qualitycheck.Check;
 
 /**
  *

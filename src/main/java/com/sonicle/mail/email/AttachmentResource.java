@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail.email;
 
+import com.sonicle.commons.Check;
 import com.sonicle.mail.MimeUtils;
 import jakarta.activation.DataSource;
 import java.io.IOException;
@@ -40,7 +41,6 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
 /**

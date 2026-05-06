@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.Check;
 import com.sonicle.mail.email.EmailMessage;
 import com.sonicle.mail.email.Recipient;
 import com.sonicle.mail.producer.MimeMessageProducer;
@@ -47,7 +48,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Properties;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.io.output.QueueOutputStream;
 import org.apache.commons.lang3.StringUtils;
 

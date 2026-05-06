@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.Check;
 import com.sonicle.mail.imap.SonicleIMAPFolder;
 import com.sonicle.mail.imap.SonicleIMAPSSLSocketFactory;
 import com.sonicle.mail.imap.SonicleIMAPSocketFactory;
@@ -57,7 +58,6 @@ import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.Set;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

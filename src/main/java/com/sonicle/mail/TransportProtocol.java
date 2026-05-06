@@ -33,11 +33,11 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.Check;
 import com.sonicle.commons.EnumUtils;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.Properties;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
 
 /**

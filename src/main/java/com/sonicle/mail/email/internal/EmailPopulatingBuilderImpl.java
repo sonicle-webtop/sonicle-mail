@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail.email.internal;
 
+import com.sonicle.commons.Check;
 import com.sonicle.commons.InternetAddressUtils;
 import com.sonicle.commons.LangUtils;
 import com.sonicle.mail.email.AttachmentResource;
@@ -54,7 +55,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
 
 /**

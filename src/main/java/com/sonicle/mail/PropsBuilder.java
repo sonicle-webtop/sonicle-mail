@@ -33,8 +33,8 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.Check;
 import java.util.Properties;
-import net.sf.qualitycheck.Check;
 
 /**
  *

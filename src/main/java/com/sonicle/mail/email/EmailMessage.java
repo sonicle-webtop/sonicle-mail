@@ -33,13 +33,13 @@
  */
 package com.sonicle.mail.email;
 
+import com.sonicle.commons.Check;
 import jakarta.mail.internet.MimeMessage;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import net.sf.qualitycheck.Check;
 
 /**
  * Heavily inspired by https://github.com/bbottema/simple-java-mail

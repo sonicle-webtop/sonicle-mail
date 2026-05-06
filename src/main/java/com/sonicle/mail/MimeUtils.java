@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.Check;
 import com.sun.mail.util.PropUtil;
 import jakarta.mail.Address;
 import jakarta.mail.Message.RecipientType;
@@ -60,7 +61,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
 
 /**

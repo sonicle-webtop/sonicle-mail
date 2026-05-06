@@ -33,7 +33,7 @@
  */
 package com.sonicle.mail;
 
-import net.sf.qualitycheck.Check;
+import com.sonicle.commons.Check;
 
 /**
  *

@@ -33,7 +33,7 @@
  */
 package com.sonicle.mail;
 
-import com.sonicle.commons.EnumUtils;
+import com.sonicle.commons.Check;
 import com.sonicle.commons.flags.BitFlags;
 import com.sun.mail.imap.IMAPStore;
 import jakarta.mail.Folder;
@@ -48,7 +48,6 @@ import java.util.concurrent.locks.StampedLock;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import net.sf.qualitycheck.Check;
 import com.sonicle.commons.flags.BitFlagsEnum;
 import com.sonicle.mail.cyrus.CyrusManager;
 import static com.sonicle.mail.cyrus.CyrusManager.CYRUS_KEY_SHAREDSEEN;

@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail.producer;
 
+import com.sonicle.commons.Check;
 import com.sonicle.mail.MimeUtils;
 import com.sonicle.mail.NamedDataSource;
 import com.sonicle.mail.email.AttachmentResource;
@@ -58,7 +59,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.StringUtils;
 
 /**

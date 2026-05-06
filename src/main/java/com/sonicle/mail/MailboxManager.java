@@ -33,16 +33,13 @@
  */
 package com.sonicle.mail;
 
+import com.sonicle.commons.Check;
 import jakarta.mail.Folder;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Store;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
-import net.sf.qualitycheck.Check;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

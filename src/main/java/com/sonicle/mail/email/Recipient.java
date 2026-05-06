@@ -33,12 +33,12 @@
  */
 package com.sonicle.mail.email;
 
+import com.sonicle.commons.Check;
 import com.sonicle.commons.InternetAddressUtils;
 import com.sonicle.commons.LangUtils;
 import jakarta.mail.Message.RecipientType;
 import jakarta.mail.internet.InternetAddress;
 import java.io.Serializable;
-import net.sf.qualitycheck.Check;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 

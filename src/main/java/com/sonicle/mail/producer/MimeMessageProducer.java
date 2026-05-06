@@ -33,6 +33,7 @@
  */
 package com.sonicle.mail.producer;
 
+import com.sonicle.commons.Check;
 import com.sonicle.mail.email.EmailMessage;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
@@ -40,7 +41,6 @@ import jakarta.mail.internet.MimeMessage;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
-import net.sf.qualitycheck.Check;
 
 /**
  * Heavily inspired by https://github.com/bbottema/simple-java-mail
