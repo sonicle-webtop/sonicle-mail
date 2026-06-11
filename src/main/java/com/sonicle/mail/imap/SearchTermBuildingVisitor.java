@@ -48,6 +48,7 @@ import jakarta.mail.search.SearchTerm;
 import java.util.Collection;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.joda.time.DateTimeZone;
 
 /**
  *
@@ -56,6 +57,7 @@ import java.util.stream.Collectors;
 public abstract class SearchTermBuildingVisitor extends NoArgRSQLVisitorAdapter<SearchTerm> {
 	protected final Function<Object, Object> normalizer;
 	protected BitFlags<DefaultSearchTermOption> defaultSearchTermOpts = BitFlags.noneOf(DefaultSearchTermOption.class);
+	DateTimeZone timezone = DateTimeZone.getDefault();
 	
 	public SearchTermBuildingVisitor() {
 		this(new DefaultNormalizer());
@@ -65,7 +67,11 @@ public abstract class SearchTermBuildingVisitor extends NoArgRSQLVisitorAdapter<
 		this.normalizer = normalizer;
 	}
 	
-	abstract protected SearchTerm buildSearchTerm(final String fieldName, final Operator operator, final Collection<?> values);
+	public void setTimeZone(DateTimeZone dtz) {
+		this.timezone = dtz;
+	}
+	
+	abstract protected SearchTerm buildSearchTerm(final String fieldName, final Operator operator, final Collection<?> values, DateTimeZone timezone);
 	
 	@Override
 	public SearchTerm visit(AndNode node) {
@@ -83,8 +89,8 @@ public abstract class SearchTermBuildingVisitor extends NoArgRSQLVisitorAdapter<
 	public SearchTerm visit(ComparisonNode node) {
 		String fieldName = node.getSelector();
 		Collection<?> values = node.getArguments().stream().map(normalizer).collect(Collectors.toList());
-		SearchTerm ret = buildSearchTerm(fieldName, Operator.toOperator(node.getOperator()), values/*, node*/);
-		if (ret == null) throw new UnsupportedOperationException("Field not supported: " + fieldName);
+		SearchTerm ret = buildSearchTerm(fieldName, Operator.toOperator(node.getOperator()), values, timezone);
+		//if (ret == null) throw new UnsupportedOperationException("Field not supported: " + fieldName);
 		return ret;
 	}
 	
