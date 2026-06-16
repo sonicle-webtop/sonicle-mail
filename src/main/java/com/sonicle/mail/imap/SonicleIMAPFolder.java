@@ -116,7 +116,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 			synchronized(messageCacheLock) {
 				matches = _thread(method,term,fetchProfile);
 			}
-			return matches;
+			return compact(matches);
 
 		} catch (Exception sex) {
 			throw new MessagingException("Command too complex",sex);
@@ -206,7 +206,8 @@ public class SonicleIMAPFolder extends IMAPFolder {
                     String parsed=sitr.parse();
 
 					// Single bulk fetch replacing the former per-recursion-level fetches in parse().
-					fetch(getMessages(sitr.getAllSeqNums()), fetchProfile);
+					// compact(): a concurrent EXPUNGE can null out a seq-number, and fetch() NPEs on it.
+					fetch(compact(getMessages(sitr.getAllSeqNums())), fetchProfile);
 
 					String sorted=(method.equals("REFS")?parsed:sort_threads(parsed));
 					//System.out.println(method+"="+sorted);
@@ -226,13 +227,16 @@ public class SonicleIMAPFolder extends IMAPFolder {
 								item=item.substring(ix+1);
 							}
 							SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
+							//concurrent EXPUNGE: this seq-number no longer maps to a message; drop it
+							//from the thread (public thread() compacts the resulting trailing holes)
+							if (msg==null) continue;
 							msg.setThreadIndent(level);
 							if (level==0) {
 								++threadRoots;
 								rootix=n;
 								msg.setThreadChildren(0);
 							} else {
-								matches[rootix].incrementThreadChildren();
+								if (n>0) matches[rootix].incrementThreadChildren();
 							}
 							matches[n++]=msg;
 						}
@@ -288,16 +292,19 @@ public class SonicleIMAPFolder extends IMAPFolder {
 					currentThreadList.addItem(item);
 					item=item.substring(lsep+1);
 					SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
-					long msgdate=msg.getSentDate().getTime();
-					//System.out.println("msg "+item+" date="+msg.getSentDate());
-					if (msgdate>currentThreadList.mostRecentDate)
-						currentThreadList.mostRecentDate=msgdate;
+					//msg may be null (concurrent EXPUNGE) or have no date; leave mostRecentDate as-is
+					if (msg!=null && msg.getSentDate()!=null) {
+						long msgdate=msg.getSentDate().getTime();
+						if (msgdate>currentThreadList.mostRecentDate)
+							currentThreadList.mostRecentDate=msgdate;
+					}
 				} else {
 					currentThreadList=new ThreadList();
 					currentThreadList.addItem(item);
 					SonicleIMAPMessage msg=(SonicleIMAPMessage)getMessageBySeqNumber(Integer.parseInt(item));
-					currentThreadList.mostRecentDate=msg.getSentDate().getTime();
-					//System.out.println("msg"+item+" date="+msg.getSentDate());
+					//msg may be null (concurrent EXPUNGE) or have no date; mostRecentDate stays 0
+					if (msg!=null && msg.getSentDate()!=null)
+						currentThreadList.mostRecentDate=msg.getSentDate().getTime();
 					threads.add(currentThreadList);
 				}
 			}			
@@ -328,6 +335,46 @@ public class SonicleIMAPFolder extends IMAPFolder {
     /**
      * Sort and Search whole folder for messages matching the given terms.
      */
+    //--- null-hole guarantee -------------------------------------------------------------
+    //getMessageBySeqNumber()/getMessagesByUID()/search() return null for a sequence number or
+    //UID that a concurrent EXPUNGE removed between the server response and the mapping. A null
+    //left in the returned array later makes fetch()/setFlags()/Arrays.sort() throw a
+    //NullPointerException in JavaMail's seqnum comparator. The public sort/thread/search methods
+    //below therefore guarantee a hole-free array via compact(), so callers never need to
+    //null-check. compact() returns the SAME array (no allocation) when there is nothing to drop,
+    //which is the normal case.
+    private static Message[] compact(Message[] msgs) {
+        if (msgs==null) return null;
+        int holes=0;
+        for (Message m: msgs) if (m==null) holes++;
+        if (holes==0) return msgs;
+        Message[] out=new Message[msgs.length-holes];
+        int j=0;
+        for (Message m: msgs) if (m!=null) out[j++]=m;
+        return out;
+    }
+
+    private static SonicleIMAPMessage[] compact(SonicleIMAPMessage[] msgs) {
+        if (msgs==null) return null;
+        int holes=0;
+        for (SonicleIMAPMessage m: msgs) if (m==null) holes++;
+        if (holes==0) return msgs;
+        SonicleIMAPMessage[] out=new SonicleIMAPMessage[msgs.length-holes];
+        int j=0;
+        for (SonicleIMAPMessage m: msgs) if (m!=null) out[j++]=m;
+        return out;
+    }
+
+    @Override
+    public synchronized Message[] search(SearchTerm term) throws MessagingException {
+        return compact(super.search(term));
+    }
+
+    @Override
+    public synchronized Message[] search(SearchTerm term, Message[] msgs) throws MessagingException {
+        return compact(super.search(term, msgs));
+    }
+
     public synchronized Message[] sort(SonicleSortTerm sort, SearchTerm term)
 				throws MessagingException {
 		checkOpened();
@@ -363,7 +410,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 					matchMsgs[i] = getMessageBySeqNumber(matches[i]);
 				}
 			}
-			return matchMsgs;
+			return compact(matchMsgs);
 
 		} catch (SonicleSortException sex) {
 			// too complex for IMAP
@@ -385,7 +432,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 					matchMsgs=getMessagesByUID(matches);
 				}
 			}
-			return matchMsgs;
+			return compact(matchMsgs);
 
 		} catch (SonicleSortException sex) {
 			// too complex for IMAP
@@ -597,6 +644,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
         Message msgs[]=null;
         if (term!=null) msgs=search(term);
         else msgs=getMessages();
+        msgs=compact(msgs);
         FetchProfile fp=new FetchProfile();
         SonicleSortTerm xterm=sort;
         while(xterm!=null) {
@@ -1031,7 +1079,7 @@ public class SonicleIMAPFolder extends IMAPFolder {
 				Message[] msgs = new Message[uids.length];
 				for (int i = 0; i < uids.length; i++)
 					msgs[i] = (Message)uidTable.get(Long.valueOf(uids[i]));
-				return msgs;
+				return compact(msgs);
 			}
 		} catch(ConnectionException cex) {
 			throw new FolderClosedException(this, cex.getMessage());
