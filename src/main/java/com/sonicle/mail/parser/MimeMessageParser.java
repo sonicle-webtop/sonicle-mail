@@ -191,11 +191,14 @@ public class MimeMessageParser {
 				
 				} else if (isMimeType(mpPart, "text/calendar") || isMimeType(mpPart, "application/ics")) {// uguale a sopra
 					parsed.appendDisplayPart(mpPart, depth);
-					if (isMimeType(mpPart, "text/calendar") && !parsed.hasCalendar() && !Part.ATTACHMENT.equalsIgnoreCase(mpDisposition)) {
+					boolean isAttachment = Part.ATTACHMENT.equalsIgnoreCase(mpDisposition);
+					if (isMimeType(mpPart, "text/calendar") && !parsed.hasCalendar() && !isAttachment) {
 						try {
 							parsed.addCalendar(parseCalendarMethod(mpPart), parseCalendarContent(mpPart));
 						} catch(MimeMessageParseException exc) { }
 					}
+					if (isAttachment)
+						parsed.appendAttachmentPart(mpPart, depth);
 					
 				} else if (isMimeType(mpPart, "message/rfc822")) {// rfc822 diverso !!!
 					int newDepth = depth;
