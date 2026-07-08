@@ -35,15 +35,19 @@ package com.sonicle.mail;
 
 import com.sonicle.commons.Check;
 import com.sonicle.commons.flags.BitFlags;
+import com.sonicle.mail.imap.SonicleIMAPSocketTracker;
+import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPStore;
 import jakarta.mail.Folder;
 import jakarta.mail.MessagingException;
+import jakarta.mail.Quota;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import java.security.GeneralSecurityException;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -52,7 +56,10 @@ import com.sonicle.commons.flags.BitFlagsEnum;
 import com.sonicle.mail.cyrus.CyrusManager;
 import static com.sonicle.mail.cyrus.CyrusManager.CYRUS_KEY_SHAREDSEEN;
 import jakarta.mail.event.ConnectionListener;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 
 /**
@@ -65,18 +72,39 @@ public class Mailbox {
 	protected final StoreHostParams hostParams;
 	protected final MailboxConfig config;
 	protected final Session session;
+	protected final Properties defaultProperties;
 	protected final StampedLock lock = new StampedLock();
 	protected Store store = null;
 	protected BitFlags<StoreOption> storeOptions = null;
-	protected HashSet<String> sharedPrefixes = null;
-	protected char folderSeparator = Character.MIN_VALUE;
-	protected AtomicBoolean connecting = new AtomicBoolean(false);
-	protected AtomicBoolean disconnecting = new AtomicBoolean(false);
-	
+	//volatile + build-then-publish in doConnect: read lock-free by helpers like
+	//getSharedFolderName/isUnderSharedFolder on request threads while a reconnect
+	//under the write lock rebuilds them
+	protected volatile HashSet<String> sharedPrefixes = null;
+	protected volatile char folderSeparator = Character.MIN_VALUE;
+	// Live dedicated idle connections (each on its own store/session/tracker,
+	// independent of the interactive pooled store). Closed on disconnect().
+	// Guarded by its own monitor: registration in openDedicatedFolder must not
+	// interleave with closeAllDedicatedFolders, or an in-flight open survives
+	// the teardown as an untracked live IDLE connection.
+	protected final Set<DedicatedFolder> dedicatedFolders = ConcurrentHashMap.newKeySet();
+	protected boolean dedicatedTeardown = false; //guarded by synchronized(dedicatedFolders)
+	// Optional tracker for the POOLED store's sockets: when present, disconnect()
+	// force-closes them before store.close(), so teardown cannot hang on a dead
+	// socket (e.g. dropped VPN). Dedicated idle folders have their own trackers.
+	protected final SonicleIMAPSocketTracker storeSocketTracker;
+
 	public Mailbox(final StoreHostParams mailboxParams, final MailboxConfig mailboxConfig, final Properties defaultProperties) throws GeneralSecurityException {
+		this(mailboxParams, mailboxConfig, defaultProperties, null);
+	}
+
+	public Mailbox(final StoreHostParams mailboxParams, final MailboxConfig mailboxConfig, final Properties defaultProperties, final SonicleIMAPSocketTracker storeSocketTracker) throws GeneralSecurityException {
 		this.hostParams = mailboxParams;
 		this.config = mailboxConfig;
-		this.session = StoreUtils.createSession(hostParams, mailboxConfig.getPoolSize(), defaultProperties);
+		this.defaultProperties = defaultProperties;
+		this.storeSocketTracker = storeSocketTracker;
+		this.session = (storeSocketTracker != null)
+			? StoreUtils.createSession(hostParams, mailboxConfig.getPoolSize(), defaultProperties, storeSocketTracker)
+			: StoreUtils.createSession(hostParams, mailboxConfig.getPoolSize(), defaultProperties);
 	}
 	
 	public void ensureConnected() throws MessagingException {
@@ -129,6 +157,10 @@ public class Mailbox {
 	}
 	
 	public boolean disconnect() {
+		// Force-close any dedicated idle connections first (independent of the
+		// interactive store state and lock): tracker.closeAll() unblocks parked
+		// IDLE reads so their store.close() cannot hang.
+		closeAllDedicatedFolders();
 		long stamp = lock.readLock();
 		try {
 			if (!doIsReady()) return true;
@@ -154,28 +186,32 @@ public class Mailbox {
 	}
 	
 	public void addConnectionListener(final ConnectionListener connectionListener) throws MessagingException {
+		//mutates the store's listener registry: write lock + readiness (not a bare
+		//store!=null, which would register on a closed store)
 		long stamp = lock.readLock();
 		try {
-			if (store != null) {
+			if (!doIsReady()) {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
 				doManageConnectionListener(false, connectionListener);
 			} else {
 				stamp = upgradeToWriteLock(stamp);
-				doConnect(false);
 				doManageConnectionListener(false, connectionListener);
 			}
 		} finally {
 			lock.unlock(stamp);
 		}
 	}
-	
+
 	public void removeConnectionListener(final ConnectionListener connectionListener) throws MessagingException {
 		long stamp = lock.readLock();
 		try {
-			if (store != null) {
+			if (!doIsReady()) {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
 				doManageConnectionListener(true, connectionListener);
 			} else {
 				stamp = upgradeToWriteLock(stamp);
-				doConnect(false);
 				doManageConnectionListener(true, connectionListener);
 			}
 		} finally {
@@ -203,7 +239,18 @@ public class Mailbox {
 	}
 	
 	public Folder getRootFolder() throws MessagingException {
-		return doGetRootFolder();
+		long stamp = lock.readLock();
+		try {
+			if (doIsReady()) {
+				return doGetRootFolder();
+			} else {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
+				return doGetRootFolder();
+			}
+		} finally {
+			lock.unlock(stamp);
+		}
 	}
 	
 	public Folder getFolder(final String name) throws MessagingException {
@@ -225,6 +272,59 @@ public class Mailbox {
 		}
 	}
 	
+	/**
+	 * Opens a folder on a DEDICATED connection, independent of the interactive
+	 * pooled store, intended to be parked in {@code IMAPFolder.idle()}. The returned
+	 * handle owns its own store, session and {@link SonicleIMAPSocketTracker}, so it
+	 * can be force-closed ({@link DedicatedFolder#hardClose()}) to break a blocked
+	 * IDLE read without disturbing the interactive pool or other idle folders. All
+	 * live handles are also closed by {@link #disconnect()}.
+	 *
+	 * @param name Folder full name (resolved against the mailbox root).
+	 * @param readWrite True to open READ_WRITE (required for IDLE), false READ_ONLY.
+	 * @return The dedicated folder handle.
+	 */
+	public DedicatedFolder openDedicatedFolder(final String name, final boolean readWrite) throws MessagingException, GeneralSecurityException {
+		// Ensure the interactive store is connected first so the folder separator
+		// and root have been discovered (reused below for the dedicated store).
+		ensureConnected();
+		final SonicleIMAPSocketTracker tracker = new SonicleIMAPSocketTracker();
+		final Session dsession = StoreUtils.createSession(hostParams, 1, defaultProperties, tracker);
+		Store dstore = null;
+		try {
+			dstore = StoreUtils.open(dsession, hostParams.getProtocol());
+			final Folder droot = config.hasAlternativeRootFolder() ? dstore.getFolder(config.getRootFolderName()) : dstore.getDefaultFolder();
+			if (droot == null || !droot.exists()) throw new MessagingException("Root NOT found");
+			final Folder f = StoreUtils.getFolder(droot, name, folderSeparator, false);
+			if (readWrite && !f.isOpen()) f.open(Folder.READ_WRITE);
+			final DedicatedFolder handle = new DedicatedFolder(this, dstore, tracker, (IMAPFolder)f);
+			// Registration is gated: if a disconnect ran while this open was in
+			// flight, adding now would leave a live IDLE connection nobody closes.
+			synchronized (dedicatedFolders) {
+				if (dedicatedTeardown) throw new MessagingException("Mailbox is disconnecting");
+				dedicatedFolders.add(handle);
+			}
+			return handle;
+		} catch (MessagingException | RuntimeException ex) {
+			// Do not leak a half-opened dedicated connection
+			if (dstore != null) StoreUtils.closeQuietly(dstore);
+			tracker.closeAll();
+			throw ex;
+		}
+	}
+
+	private void closeAllDedicatedFolders() {
+		final java.util.List<DedicatedFolder> toClose;
+		synchronized (dedicatedFolders) {
+			dedicatedTeardown = true; //re-armed by the next doConnect
+			toClose = new ArrayList<>(dedicatedFolders);
+			dedicatedFolders.clear();
+		}
+		for (DedicatedFolder handle : toClose) {
+			handle.hardClose();
+		}
+	}
+
 	public Folder getSpecialFolder(final SpecialFolder folder, final boolean createIfNecessary) throws MessagingException {
 		Check.notNull(folder, "folder");
 		long stamp = lock.readLock();
@@ -269,7 +369,7 @@ public class Mailbox {
 		for(String sharedPrefix: sharedPrefixes) {
 			Folder sharedFolder = getFolder(sharedPrefix);
 			for(Folder fo : sharedFolder.list()) {
-				folderName = fo.getFullName(); 
+				folderName = fo.getFullName();
 				char sep=fo.getSeparator();
 				//if is a shared mailbox, and it contains an @, match it with mail user (NS7)
 				//or just user instead (XStream and NS6)
@@ -278,6 +378,36 @@ public class Mailbox {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Bulk variant of {@link #getSharedFolderName(String)}: lists each shared
+	 * prefix ONCE and resolves every given mail user against that listing,
+	 * instead of paying one LIST round-trip per user.
+	 * @param mailUsers The mail users to resolve.
+	 * @return mailUser to shared folder full name; users with no matching
+	 * shared folder are absent from the map.
+	 */
+	public Map<String, String> getSharedFolderNames(Collection<String> mailUsers) throws MessagingException {
+		Map<String, String> results = new LinkedHashMap<>();
+		if (mailUsers == null || mailUsers.isEmpty()) return results;
+		for(String sharedPrefix: sharedPrefixes) {
+			if (results.size() == mailUsers.size()) break;
+			Folder sharedFolder = getFolder(sharedPrefix);
+			for(Folder fo : sharedFolder.list()) {
+				String folderName = fo.getFullName();
+				char sep = fo.getSeparator();
+				//same rule as getSharedFolderName: folders named with an @ match the
+				//full mail user (NS7), otherwise the bare user (XStream and NS6)
+				boolean matchFullAddress = fo.getName().indexOf('@')>0;
+				for(String mailUser: mailUsers) {
+					if (results.containsKey(mailUser)) continue;
+					String name = matchFullAddress ? mailUser : StringUtils.split(mailUser, "@")[0];
+					if (folderName.equals(sharedPrefix + sep + name)) results.put(mailUser, folderName);
+				}
+			}
+		}
+		return results;
 	}
 	
 	public boolean isUnderSharedFolder(String foldername) {
@@ -320,6 +450,42 @@ public class Mailbox {
 		}
 	}
 	
+	/**
+	 * Shared-namespace prefixes discovered at connect (IMAP NAMESPACE command).
+	 * @return a defensive copy, never null (empty when none / not discovered yet)
+	 */
+	public Set<String> getSharedPrefixes() throws MessagingException {
+		long stamp = lock.readLock();
+		try {
+			if (!doIsReady()) {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
+			}
+			HashSet<String> prefixes = sharedPrefixes;
+			return (prefixes != null) ? new LinkedHashSet<>(prefixes) : new LinkedHashSet<String>();
+		} finally {
+			lock.unlock(stamp);
+		}
+	}
+
+	/**
+	 * Quota info for the passed folder root (IMAP QUOTA extension, RFC 2087).
+	 * @return the store's quota array, or null when the store is not IMAP
+	 */
+	public Quota[] getQuota(final String folderName) throws MessagingException {
+		long stamp = lock.readLock();
+		try {
+			if (!doIsReady()) {
+				stamp = upgradeToWriteLock(stamp);
+				doConnect(false);
+			}
+			if (!(store instanceof IMAPStore)) return null;
+			return ((IMAPStore)store).getQuota(folderName);
+		} finally {
+			lock.unlock(stamp);
+		}
+	}
+
 	public boolean hasOption(final StoreOption option) throws MessagingException {
 		Check.notNull(option, "option");
 		long stamp = lock.readLock();
@@ -356,7 +522,12 @@ public class Mailbox {
 		} else {
 			StoreUtils.ensureConnected(store);
 		}
-		
+		// A deliberate reconnect re-opens the gate closed by disconnect()'s
+		// dedicated-folder teardown (we hold the write lock here).
+		synchronized (dedicatedFolders) {
+			dedicatedTeardown = false;
+		}
+
 		if (initial) {
 			// Discover store's options
 			storeOptions = new BitFlags<>(StoreOption.class);
@@ -380,12 +551,14 @@ public class Mailbox {
 				}
 			}
 			
-			// Discover shared prefixes
+			// Discover shared prefixes: build fully, then publish (the volatile
+			// field is read lock-free by request threads during a reconnect)
 			Folder uns[] = store.getUserNamespaces("");
-			sharedPrefixes = new LinkedHashSet<>(uns.length);
+			LinkedHashSet<String> prefixes = new LinkedHashSet<>(uns.length);
 			for (Folder folder : uns) {
-				sharedPrefixes.add(folder.getFullName());
+				prefixes.add(folder.getFullName());
 			}
+			sharedPrefixes = prefixes;
 
 			// Discover folder separator
 			Folder rootFolder = doGetRootFolder();
@@ -404,6 +577,11 @@ public class Mailbox {
 	}
 	
 	private void doDisconnect() throws MessagingException {
+		//force-close pooled sockets first (when tracked): a parked read on a dead
+		//socket would otherwise make store.close() hang
+		if (storeSocketTracker != null) {
+			try { storeSocketTracker.closeAll(); } catch (Exception ignore) {}
+		}
 		if (store != null && store.isConnected()) store.close();
 	}
 	
@@ -493,6 +671,79 @@ public class Mailbox {
 		return null;
 	}
 	
+	/**
+	 * A folder opened on a dedicated IMAP connection (own store/session/tracker),
+	 * meant to be parked in {@code IMAPFolder.idle()}. Not returned to any pool.
+	 */
+	public static final class DedicatedFolder {
+		private final Mailbox mailbox;
+		private final Store store;
+		private final SonicleIMAPSocketTracker tracker;
+		private final IMAPFolder folder;
+		private volatile boolean closed = false;
+
+		DedicatedFolder(final Mailbox mailbox, final Store store, final SonicleIMAPSocketTracker tracker, final IMAPFolder folder) {
+			this.mailbox = mailbox;
+			this.store = store;
+			this.tracker = tracker;
+			this.folder = folder;
+		}
+
+		public IMAPFolder getFolder() {
+			return folder;
+		}
+
+		public boolean isClosed() {
+			return closed;
+		}
+
+		/**
+		 * Ensures the dedicated store is connected and the folder open READ_WRITE,
+		 * reconnecting after a server-side IDLE timeout or a dropped connection.
+		 * Called by the idle loop before each {@code idle()}.
+		 *
+		 * <p>Synchronized against {@link #hardClose()}'s close phase, with `closed`
+		 * re-checked after the reconnect: without this, a hardClose landing between
+		 * the entry check and store.connect() would tear down the OLD socket while
+		 * we open a NEW one that escapes both the tracker sweep and the registry —
+		 * a leaked live IDLE connection.</p>
+		 */
+		public synchronized void ensureOpen() throws MessagingException {
+			if (closed) throw new MessagingException("Dedicated folder is closed");
+			if (!store.isConnected()) store.connect();
+			if (closed) {
+				StoreUtils.closeQuietly(store);
+				throw new MessagingException("Dedicated folder closed during reconnect");
+			}
+			if (!folder.isOpen()) folder.open(Folder.READ_WRITE);
+			if (closed) {
+				try { folder.close(false); } catch (Exception ignore) {}
+				StoreUtils.closeQuietly(store);
+				throw new MessagingException("Dedicated folder closed during reopen");
+			}
+		}
+
+		/**
+		 * Force-closes the dedicated connection: hard-closes its socket (unblocking
+		 * any parked IDLE read) then quietly closes the folder and store. Idempotent.
+		 *
+		 * <p>Ordering matters: the closed flag and tracker.closeAll() run BEFORE
+		 * taking the monitor — the tracker force-close also aborts a store.connect()
+		 * in-flight inside ensureOpen (tracked sockets), so ensureOpen releases the
+		 * monitor promptly and this method can never deadlock behind a blocked
+		 * network call.</p>
+		 */
+		public void hardClose() {
+			closed = true;
+			try { tracker.closeAll(); } catch (Exception ignore) {}
+			synchronized (this) {
+				try { if (folder.isOpen()) folder.close(false); } catch (Exception ignore) {}
+				StoreUtils.closeQuietly(store);
+			}
+			mailbox.dedicatedFolders.remove(this);
+		}
+	}
+
 	public static enum SpecialFolder {
 		SENT, DRAFTS, TRASH, SPAM, ARCHIVE
 	}

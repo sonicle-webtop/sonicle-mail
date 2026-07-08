@@ -103,8 +103,19 @@ public class StoreUtils {
 	}
 	
 	public static Session createSession(final StoreHostParams params, final int poolSize, final Properties defaultProperties) throws GeneralSecurityException {
+		return createSession(params, poolSize, defaultProperties, null);
+	}
+
+	/**
+	 * Same as {@link #createSession(StoreHostParams, int, Properties)} but, when a
+	 * {@code socketTracker} is provided, wires the Sonicle IMAP socket factories so
+	 * that every socket opened by this session is tracked and can be force-closed
+	 * (e.g. to break a blocked IDLE read on teardown). Used for dedicated idle
+	 * connections.
+	 */
+	public static Session createSession(final StoreHostParams params, final int poolSize, final Properties defaultProperties, final SonicleIMAPSocketTracker socketTracker) throws GeneralSecurityException {
 		Properties props = new Properties(defaultProperties);
-		
+
 		final StoreProtocol proto = params.getProtocol();
 		proto.applyProperties(props);
 		props.setProperty(proto.getPropertyName("host"), params.getHost());
@@ -124,6 +135,9 @@ public class StoreUtils {
 			}
 			props.setProperty(proto.getPropertyName("username"), username);
 		}
+		// Wire tracked socket factories when a tracker is provided (dedicated idle
+		// connections that must be force-closable on teardown).
+		if (socketTracker != null) useSonicleIMAPSocketFactories(props, socketTracker);
 		if (username != null && params.getPassword() != null) {
 			props.setProperty(proto.getPropertyName("authenticate"), "true");
 			LOGGER.debug("Creating {} session to {}:{} using {}/{}", proto.name(), params.getHost(), params.getPort(), username, StringUtils.left(params.getPassword(), 3) + "***");
