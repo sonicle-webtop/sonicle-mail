@@ -40,6 +40,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +51,14 @@ import java.util.stream.Collectors;
  * @author malbinola
  */
 public class Recipients {
+	
+	public static Address[] toAddresses(final Collection<Recipient> recipients) {
+		return (recipients == null) ? null : recipients.stream()
+			.map((t) -> {
+				return t.asInternetAddress();
+			})
+			.toArray(Address[]::new);
+	}
 	
 	public static Message removeAnyFrom(final Message message, final Set<InternetAddress> addressToRemove) throws MessagingException {
 		removeFrom(message, addressToRemove, Message.RecipientType.TO);
