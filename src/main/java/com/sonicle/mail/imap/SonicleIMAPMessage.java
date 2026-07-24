@@ -209,7 +209,25 @@ public class SonicleIMAPMessage extends IMAPMessage {
     }
 
 	private boolean isAttachment(BODYSTRUCTURE bs) {
-		return bs.disposition!=null && bs.disposition.equalsIgnoreCase("ATTACHMENT");
+		// explicit attachment disposition
+		if ("ATTACHMENT".equalsIgnoreCase(bs.disposition)) return true;
+
+		String filename = getFilename(bs);
+		if (filename == null) return false;
+
+		// inline + Content-ID + image type => likely a real embedded resource
+		boolean hasCid = bs.id != null && !bs.id.isEmpty();
+		boolean isImage = "IMAGE".equalsIgnoreCase(bs.type);
+		if ("INLINE".equalsIgnoreCase(bs.disposition) && hasCid && isImage) return false;
+
+		return true;
+	}
+
+	private String getFilename(BODYSTRUCTURE bs) {
+		String fn = null;
+		if (bs.dParams != null) fn = bs.dParams.get("filename");
+		if (fn == null && bs.cParams != null) fn = bs.cParams.get("name");
+		return (fn != null && !fn.trim().isEmpty()) ? fn : null;
 	}
 	
 	// strict : check also request method
