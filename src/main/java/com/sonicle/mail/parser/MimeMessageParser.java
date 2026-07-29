@@ -81,6 +81,7 @@ public class MimeMessageParser {
 	
 	private boolean processDisplayParts = false;
 	private boolean pdpBalanceTags = false;
+	private boolean processMailtoForWeb = true;
 	private DisplayPartEvaluator dpe = null;
 	
 	public MimeMessageParser withProcessDisplayParts(boolean balanceTags, DisplayPartEvaluator dpe) {
@@ -90,6 +91,14 @@ public class MimeMessageParser {
 		return this;
 	}
 	
+	public MimeMessageParser withProcessDisplayParts(boolean balanceTags, boolean processMailtoForWeb, DisplayPartEvaluator dpe) {
+		this.processDisplayParts = true;
+		this.pdpBalanceTags = balanceTags;
+		this.processMailtoForWeb = processMailtoForWeb;
+		this.dpe = dpe;
+		return this;
+	}
+
 	public ParsedMimeMessageComponents parse(final MimeMessage message, final boolean isPECAccount) {
 		ParsedMimeMessageComponents parsed = new ParsedMimeMessageComponents(message, isPECAccount);
 		
@@ -394,7 +403,7 @@ public class MimeMessageParser {
 			  if (dispPart.isMimeType("text/html")) {
 				  Object tlock=new Object();
 				  HTMLMailParserThread parserThread=null;
-				  parserThread=new HTMLMailParserThread(tlock, istream, charset, pdpBalanceTags);
+				  parserThread=new HTMLMailParserThread(tlock, istream, charset, pdpBalanceTags, processMailtoForWeb);
 				  try {
 					  java.io.BufferedReader breader=startHTMLMailParser(parserThread, new SaxHTMLMailEvaluator(parsed) {
 						  @Override
@@ -461,17 +470,19 @@ public class MimeMessageParser {
 	  Object threadLock=null;
 	  SaxHTMLMailParser saxHTMLMailParser=null;
 	  boolean balanceTags=true;
+	  boolean processMailtoForWeb=true;
 
-	  HTMLMailParserThread(Object tlock, InputStream istream, String charset, boolean balanceTags) {
+	  HTMLMailParserThread(Object tlock, InputStream istream, String charset, boolean balanceTags, boolean processMailtoForWeb) {
 		  this.threadLock=tlock;
 		  this.istream=istream;
 		  this.charset=charset;
 		  this.balanceTags=balanceTags;
+		  this.processMailtoForWeb=processMailtoForWeb;
 		  this.saxHTMLMailParser=new SaxHTMLMailParser();
 	  }
 
 	  public void initialize(SaxHTMLMailEvaluator evaluator, boolean justBody) throws SAXException {
-		  saxHTMLMailParser.initialize(evaluator, justBody, true);        
+		  saxHTMLMailParser.initialize(evaluator, justBody, true, processMailtoForWeb);        
 	  }
 
 	  public void run() {

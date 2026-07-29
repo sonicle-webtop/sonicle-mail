@@ -61,6 +61,7 @@ public class SaxHTMLMailParser extends DefaultHandler implements LexicalHandler 
   private boolean inhtml=false;
   private boolean donehtml=false;
   private boolean removeHeadStyle=false;
+  private boolean processMailtoForWeb=true;
 
   private static Vector unenclosedTags=new Vector();
 
@@ -78,6 +79,10 @@ public class SaxHTMLMailParser extends DefaultHandler implements LexicalHandler 
   }
   
   public void initialize(SaxHTMLMailEvaluator evaluator, boolean justBody, boolean removeHeadStyle) throws SAXException {
+	  initialize(evaluator, justBody, removeHeadStyle, true);
+  }
+  
+  public void initialize(SaxHTMLMailEvaluator evaluator, boolean justBody, boolean removeHeadStyle, boolean processMailtoForWeb) throws SAXException {
     release();
 
     this.evaluator=evaluator;
@@ -92,6 +97,7 @@ public class SaxHTMLMailParser extends DefaultHandler implements LexicalHandler 
     breader=new BufferedReader(reader);
     this.justBody=justBody;
 	this.removeHeadStyle=removeHeadStyle;
+	this.processMailtoForWeb=processMailtoForWeb;
   }
   
   public BufferedReader getParsedHTML() {
@@ -245,7 +251,7 @@ public class SaxHTMLMailParser extends DefaultHandler implements LexicalHandler 
 					avalue = "_blank";
 					changedTarget = true;
 				} else if (laqname.equals("href")) {
-					if (lavalue.startsWith("mailto:")) {
+					if (processMailtoForWeb && lavalue.startsWith("mailto:")) {
 						mailtoParams = lavalue.substring(7);
 						avalue = "#";
 						ismailto = true;
@@ -266,7 +272,7 @@ public class SaxHTMLMailParser extends DefaultHandler implements LexicalHandler 
 				pwriter.print(" " + aqname + "=\"" + StringUtils.replace(avalue, "\"", "&quot;") + "\"");
 			}
 		}
-		if (ismailto) {
+		if (processMailtoForWeb && ismailto) {
 			String email=mailtoParams;
 			String sparams="\""+email+"\"";
 			int ix=mailtoParams.indexOf("?");
