@@ -34,6 +34,20 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 	private int threadRoots=0;
 
+	//Timing breakdown of the last thread() call, for callers that want to
+	//diagnose slow runs (lock waits vs server-side THREAD vs bulk fetch).
+	//thread() is synchronized, so a caller reading these right after its own
+	//call sees its own run.
+	private volatile long lastThreadBodyMs=-1;
+	private volatile long lastThreadCacheLockWaitMs=-1;
+	private volatile long lastThreadCmdMs=-1;
+	private volatile long lastThreadFetchMs=-1;
+
+	public long getLastThreadBodyMs() { return lastThreadBodyMs; }
+	public long getLastThreadCacheLockWaitMs() { return lastThreadCacheLockWaitMs; }
+	public long getLastThreadCmdMs() { return lastThreadCmdMs; }
+	public long getLastThreadFetchMs() { return lastThreadFetchMs; }
+
     private static String[] searchCharsets; 	// array of search charsets
 
     static {
@@ -113,9 +127,12 @@ public class SonicleIMAPFolder extends IMAPFolder {
 		try {
 			SonicleIMAPMessage[] matches = null;
 
+			long t0=System.currentTimeMillis();
 			synchronized(messageCacheLock) {
+				lastThreadCacheLockWaitMs=System.currentTimeMillis()-t0;
 				matches = _thread(method,term,fetchProfile);
 			}
+			lastThreadBodyMs=System.currentTimeMillis()-t0;
 			return compact(matches);
 
 		} catch (Exception sex) {
@@ -188,7 +205,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
     private SonicleIMAPMessage[] _issueThread(String method, SearchTerm term, String charset, FetchProfile fetchProfile)
 	     throws MessagingException, SearchException, IOException {
 
+        long tc0=System.currentTimeMillis();
         Response[] r=(Response[])doCommand(new GetThread(method,term,charset));
+        lastThreadCmdMs=System.currentTimeMillis()-tc0;
 
 		Response response = r[r.length-1];
 		SonicleIMAPMessage[] matches = null;
@@ -207,7 +226,9 @@ public class SonicleIMAPFolder extends IMAPFolder {
 
 					// Single bulk fetch replacing the former per-recursion-level fetches in parse().
 					// compact(): a concurrent EXPUNGE can null out a seq-number, and fetch() NPEs on it.
+					long tf0=System.currentTimeMillis();
 					fetch(compact(getMessages(sitr.getAllSeqNums())), fetchProfile);
+					lastThreadFetchMs=System.currentTimeMillis()-tf0;
 
 					String sorted=(method.equals("REFS")?parsed:sort_threads(parsed));
 					//System.out.println(method+"="+sorted);
