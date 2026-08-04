@@ -34,6 +34,9 @@
 package com.sonicle.mail;
 
 import com.sonicle.commons.Check;
+import com.sonicle.mail.imap.SonicleIMAPSSLSocketFactory;
+import com.sonicle.mail.imap.SonicleIMAPSocketFactory;
+import com.sonicle.mail.imap.SonicleIMAPSocketTracker;
 import java.util.Properties;
 
 /**
@@ -52,7 +55,7 @@ public class PropsBuilder {
 	}
 	
 	public PropsBuilder debug(boolean debug) {
-		props.setProperty("mail.debug", String.valueOf(debug));
+		enableDebug(props, debug);
 		return this;
 	}
 	
@@ -61,7 +64,7 @@ public class PropsBuilder {
 	}
 	
 	public PropsBuilder socketDebug(boolean socketDebug) {
-		props.setProperty("mail.socket.debug", String.valueOf(socketDebug));
+		enableSocketDebug(props, socketDebug);
 		return this;
 	}
 	
@@ -70,42 +73,22 @@ public class PropsBuilder {
 	}
 	
 	public PropsBuilder withParseDebug() {
-		props.setProperty("mail.imap.parse.debug", "true");
-		props.setProperty("mail.imaps.parse.debug", "true");
+		enableIMAPParseDebug(props, true);
 		return this;
 	}
 	
-	/**
-	 * @deprecated use withCustomizedIMAPFolderClasses instead
-	 */
-	@Deprecated public PropsBuilder withSonicleIMAPFolder() {
-		return withCustomizedIMAPFolderClasses();
-	}
-	
 	public PropsBuilder withCustomizedIMAPFolderClasses() {
-		props.setProperty("mail.imap.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
-		props.setProperty("mail.imaps.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
+		useCustomizedIMAPFolderClasses(props);
 		return this;
 	}
 	
 	public PropsBuilder withAvoidSlownessOnGettingLocalHostName() {
-		
-		// Calls to InternetAddress.getLocalHostName can be slow, especially 
-		// in dev/local environments, when the internal flow tries to call 
-		// the inner method getCanonicalHostName. This tries to reverse the 
-		// discovered InetAddress for getting a FQDN, this can be slow on 
-		// environments without a DNS properly configured.
-		// Also MimeMessage.reply() method may be affected.
-		// https://github.com/jakartaee/mail-api/blob/master/api/src/main/java/jakarta/mail/internet/MimeMessage.java#L1738C13-L1738C75
-		// https://github.com/jakartaee/mail-api/blob/master/api/src/main/java/jakarta/mail/internet/InternetAddress.java#L664C27-L664C47
-		
-		props.setProperty("mail.mime.address.usecanonicalhostname", "false");
+		avoidSlownessOnGettingLocalHostName(props);
 		return this;
 	}
 	
 	public PropsBuilder withEnableIMAPEvents() {
-		props.setProperty("mail.imap.enableimapevents", "true");
-		props.setProperty("mail.imaps.enableimapevents", "true");
+		enableIMAPEvents(props, true);
 		return this;
 	}
 	
@@ -117,5 +100,57 @@ public class PropsBuilder {
 	
 	public Properties build() {
 		return props;
+	}
+	
+	public static Properties enableDebug(final Properties properties, final boolean enabled) {
+		properties.setProperty("mail.debug", String.valueOf(enabled));
+		return properties;
+	}
+	
+	public static Properties enableSocketDebug(final Properties properties, final boolean enabled) {
+		properties.setProperty("mail.socket.debug", String.valueOf(enabled));
+		return properties;
+	}
+	
+	public static Properties enableIMAPParseDebug(final Properties properties, final boolean enabled) {
+		properties.setProperty("mail.imap.parse.debug", String.valueOf(enabled));
+		properties.setProperty("mail.imaps.parse.debug", String.valueOf(enabled));
+		return properties;
+	}
+	
+	public static Properties enableIMAPEvents(final Properties properties, final boolean enabled) {
+		properties.setProperty("mail.imap.enableimapevents", String.valueOf(enabled));
+		properties.setProperty("mail.imaps.enableimapevents", String.valueOf(enabled));
+		return properties;
+	}
+	
+	public static Properties useCustomizedIMAPFolderClasses(final Properties properties) {
+		properties.setProperty("mail.imap.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
+		properties.setProperty("mail.imaps.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
+		return properties;
+	}
+	
+	public static Properties useCustomizedIMAPSocketFactory(final Properties properties, final SonicleIMAPSocketTracker socketTracker) {
+		SonicleIMAPSocketFactory plainFactory = new SonicleIMAPSocketFactory(socketTracker);
+		SonicleIMAPSSLSocketFactory sslFactory = new SonicleIMAPSSLSocketFactory(socketTracker);
+		properties.put("mail.imap.socketFactory", plainFactory);
+		properties.put("mail.imap.ssl.socketFactory", sslFactory);
+		properties.put("mail.imaps.socketFactory", plainFactory);
+		properties.put("mail.imaps.ssl.socketFactory", sslFactory);
+		return properties;
+	}
+	
+	public static Properties avoidSlownessOnGettingLocalHostName(final Properties properties) {
+		// Calls to InternetAddress.getLocalHostName can be slow, especially 
+		// in dev/local environments, when the internal flow tries to call 
+		// the inner method getCanonicalHostName. This tries to reverse the 
+		// discovered InetAddress for getting a FQDN, this can be slow on 
+		// environments without a DNS properly configured.
+		// Also MimeMessage.reply() method may be affected.
+		// https://github.com/jakartaee/mail-api/blob/master/api/src/main/java/jakarta/mail/internet/MimeMessage.java#L1738C13-L1738C75
+		// https://github.com/jakartaee/mail-api/blob/master/api/src/main/java/jakarta/mail/internet/InternetAddress.java#L664C27-L664C47
+		
+		properties.setProperty("mail.mime.address.usecanonicalhostname", "false");
+		return properties;
 	}
 }

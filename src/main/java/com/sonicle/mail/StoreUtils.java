@@ -81,22 +81,6 @@ public class StoreUtils {
 		FETCH_PROFILE_FLAGS_UID.add(UIDFolder.FetchProfileItem.UID);
 		FETCH_PROFILE_UID.add(UIDFolder.FetchProfileItem.UID);
 	}
-	
-	public static Properties useExtendedFolderClasses(final Properties properties) {
-		properties.setProperty("mail.imap.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
-		properties.setProperty("mail.imaps.folder.class", "com.sonicle.mail.imap.SonicleIMAPFolder");
-		return properties;
-	}
-	
-	public static Properties useSonicleIMAPSocketFactories(final Properties properties, SonicleIMAPSocketTracker socketTracker) {
-		SonicleIMAPSocketFactory plainFactory = new SonicleIMAPSocketFactory(socketTracker);
-		SonicleIMAPSSLSocketFactory sslFactory = new SonicleIMAPSSLSocketFactory(socketTracker);
-		properties.put("mail.imap.socketFactory",      plainFactory);
-		properties.put("mail.imap.ssl.socketFactory",  sslFactory);
-		properties.put("mail.imaps.socketFactory",     plainFactory);
-		properties.put("mail.imaps.ssl.socketFactory", sslFactory);
-		return properties;
-	}
 
 	public static Session createSession(final StoreHostParams params, final int poolSize) throws GeneralSecurityException {
 		return createSession(params, poolSize, System.getProperties());
@@ -137,7 +121,7 @@ public class StoreUtils {
 		}
 		// Wire tracked socket factories when a tracker is provided (dedicated idle
 		// connections that must be force-closable on teardown).
-		if (socketTracker != null) useSonicleIMAPSocketFactories(props, socketTracker);
+		if (socketTracker != null) PropsBuilder.useCustomizedIMAPSocketFactory(props, socketTracker);
 		if (username != null && params.getPassword() != null) {
 			props.setProperty(proto.getPropertyName("authenticate"), "true");
 			LOGGER.debug("Creating {} session to {}:{} using {}/{}", proto.name(), params.getHost(), params.getPort(), username, StringUtils.left(params.getPassword(), 3) + "***");
