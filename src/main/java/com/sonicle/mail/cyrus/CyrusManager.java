@@ -34,14 +34,6 @@
 package com.sonicle.mail.cyrus;
 
 import com.sonicle.commons.Check;
-import com.sonicle.commons.EnumUtils;
-import com.sonicle.commons.InternetAddressUtils;
-import com.sonicle.commons.LangUtils;
-import com.sonicle.mail.Mailbox;
-import com.sonicle.mail.MailboxConfig;
-import com.sonicle.mail.PropsBuilder;
-import com.sonicle.mail.StoreHostParams;
-import com.sonicle.mail.StoreProtocol;
 import com.sonicle.mail.StoreUtils;
 import com.sonicle.mail.imap.SonicleIMAPFolder;
 import com.sun.mail.imap.ACL;
