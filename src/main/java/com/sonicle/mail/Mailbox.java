@@ -710,12 +710,24 @@ public class Mailbox {
 		 */
 		public synchronized void ensureOpen() throws MessagingException {
 			if (closed) throw new MessagingException("Dedicated folder is closed");
+			//happy path: folder still open = its connection is alive (IDLE itself
+			//keeps it so). LOCAL flag check only — deliberately NO store-level
+			//check here: store.isConnected() issues a NOOP through a pool
+			//connection, and since the folder stole the only pooled connection at
+			//open, that NOOP CREATES a second connection and keeps it alive on
+			//every idle cycle — doubling the per-folder IMAP footprint (observed:
+			//2×N standing connections for N idle folders). A dead connection makes
+			//idle() throw and the folder gets marked closed, landing us below.
+			if (folder.isOpen()) return;
 			if (!store.isConnected()) store.connect();
 			if (closed) {
 				StoreUtils.closeQuietly(store);
 				throw new MessagingException("Dedicated folder closed during reconnect");
 			}
-			if (!folder.isOpen()) folder.open(Folder.READ_WRITE);
+			//jakarta.mail pool note: this open STEALS the pool connection created
+			//by connect/isConnected above (poolsize=1, separateStoreConnection
+			//unset), so the reconnect path also converges to ONE connection.
+			folder.open(Folder.READ_WRITE);
 			if (closed) {
 				try { folder.close(false); } catch (Exception ignore) {}
 				StoreUtils.closeQuietly(store);
