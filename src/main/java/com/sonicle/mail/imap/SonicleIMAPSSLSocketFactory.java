@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.GeneralSecurityException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.net.ssl.SSLSocketFactory;
 
 /**
@@ -25,7 +28,7 @@ public class SonicleIMAPSSLSocketFactory extends SSLSocketFactory {
 
 	public SonicleIMAPSSLSocketFactory(SonicleIMAPSocketTracker tracker) {
 		this.tracker = tracker;
-		this.delegate = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		this.delegate = TrustFactories.trustAll(); //(SSLSocketFactory) SSLSocketFactory.getDefault();
 	}
 
 	private Socket track(Socket s) {

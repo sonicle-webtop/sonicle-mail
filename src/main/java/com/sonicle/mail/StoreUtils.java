@@ -104,8 +104,7 @@ public class StoreUtils {
 		proto.applyProperties(props);
 		props.setProperty(proto.getPropertyName("host"), params.getHost());
 		props.setProperty(proto.getPropertyName("port"), String.valueOf(params.getPort()));
-		//if (params.getTrustHost()) proto.sslTrustHosts(props, Arrays.asList(params.getHost()));
-		proto.sslTrustAllHosts(props);
+		if (params.getTrustHost()) proto.sslTrustHosts(props, Arrays.asList(params.getHost()));
 		props.setProperty(proto.getPropertyName("connectionpoolsize"), String.valueOf(poolSize));
 		
 		String username = null;
@@ -123,6 +122,7 @@ public class StoreUtils {
 		// Wire tracked socket factories when a tracker is provided (dedicated idle
 		// connections that must be force-closable on teardown).
 		if (socketTracker != null) PropsBuilder.useCustomizedIMAPSocketFactory(props, socketTracker);
+		
 		if (username != null && params.getPassword() != null) {
 			props.setProperty(proto.getPropertyName("authenticate"), "true");
 			LOGGER.debug("Creating {} session to {}:{} using {}/{}", proto.name(), params.getHost(), params.getPort(), username, StringUtils.left(params.getPassword(), 3) + "***");
