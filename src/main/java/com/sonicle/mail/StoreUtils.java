@@ -104,7 +104,8 @@ public class StoreUtils {
 		proto.applyProperties(props);
 		props.setProperty(proto.getPropertyName("host"), params.getHost());
 		props.setProperty(proto.getPropertyName("port"), String.valueOf(params.getPort()));
-		if (params.getTrustHost()) proto.sslTrustHosts(props, Arrays.asList(params.getHost()));
+		//if (params.getTrustHost()) proto.sslTrustHosts(props, Arrays.asList(params.getHost()));
+		proto.sslTrustAllHosts(props);
 		props.setProperty(proto.getPropertyName("connectionpoolsize"), String.valueOf(poolSize));
 		
 		String username = null;
