@@ -66,6 +66,8 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	protected String id;
 	protected Recipient fromRecipient;
 	protected Recipient replyToRecipient;
+	protected String replyFolderName;
+	protected String forwardedFolderName;
 	protected Recipient bounceToRecipient;
 	protected List<Recipient> recipients;
 	protected String subject;
@@ -160,6 +162,12 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	@Override
 	public EmailPopulatingBuilder withReplyTo(final Recipient recipient) {
 		this.replyToRecipient = recipient != null ? new Recipient(recipient.getAddress(), recipient.getName(), null) : null;
+		return this;
+	}
+	
+	@Override
+	public EmailPopulatingBuilder withReplyFolderName(final String folderName) {
+		this.replyFolderName = folderName;
 		return this;
 	}
 	
@@ -730,6 +738,12 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	}
 	
 	@Override
+	public EmailPopulatingBuilder withForwardedFolderName(final String folderName) {
+		this.forwardedFolderName = folderName;
+		return this;
+	}
+	
+	@Override
 	public EmailPopulatingBuilder withInReplyTo(final String id) {
 		this.inReplyTo = id;
 		return this;
@@ -1092,6 +1106,11 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	}
 	
 	@Override
+	public String getReplyFolderName() {
+		return replyFolderName;
+	}
+	
+	@Override
 	public Recipient getBounceToRecipient() {
 		return bounceToRecipient;
 	}
@@ -1109,6 +1128,11 @@ public class EmailPopulatingBuilderImpl implements InternalEmailPopulatingBuilde
 	@Override
 	public String getForwardedFrom() {
 		return forwardedFrom;
+	}
+	
+	@Override
+	public String getForwardedFolderName() {
+		return forwardedFolderName;
 	}
 	
 	@Override

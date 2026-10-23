@@ -59,6 +59,7 @@ public interface EmailPopulatingBuilder {
 	EmailPopulatingBuilder withReplyTo(final InternetAddress replyToAddress);
 	EmailPopulatingBuilder withReplyTo(final String fixedName, InternetAddress replyToAddress);
 	EmailPopulatingBuilder withReplyTo(final Recipient recipient);
+	EmailPopulatingBuilder withReplyFolderName(final String replyFolderName);
 	EmailPopulatingBuilder withBounceTo(final String bounceToAddress);
 	EmailPopulatingBuilder withBounceTo(final String name, final String bounceToAddress);
 	EmailPopulatingBuilder withBounceTo(final InternetAddress bounceToAddress);
@@ -148,6 +149,7 @@ public interface EmailPopulatingBuilder {
 	EmailPopulatingBuilder withRecipient(final Recipient recipient);
 	EmailPopulatingBuilder withSubject(final String subject);
 	EmailPopulatingBuilder withForwardedFrom(final String id);
+	EmailPopulatingBuilder withForwardedFolderName(final String forwardedFolderName);
 	EmailPopulatingBuilder withInReplyTo(final String id);
 	EmailPopulatingBuilder withReferences(final String refs);
 	//EmailPopulatingBuilder withPlainText(final File textPlainFile);
@@ -198,10 +200,12 @@ public interface EmailPopulatingBuilder {
 	public String getId();
 	public Recipient getFromRecipient();
 	public Recipient getReplyToRecipient();
+	public String getReplyFolderName();
 	public Recipient getBounceToRecipient();
 	public List<Recipient> getRecipients();
 	public String getSubject();
 	public String getForwardedFrom();
+	public String getForwardedFolderName();
 	public String getInReplyTo();
 	public String getReferences();
 	public MimeMessage getEmailToForward();
