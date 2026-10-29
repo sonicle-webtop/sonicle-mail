@@ -253,6 +253,11 @@ public class Mailbox {
 		}
 	}
 	
+	//Get folder instance from store as is, without checking existence
+	public Folder getFolderInstance(final String name) throws MessagingException {
+		return store.getFolder(name);
+	}
+	
 	public Folder getFolder(final String name) throws MessagingException {
 		return getFolder(name, false);
 	}
